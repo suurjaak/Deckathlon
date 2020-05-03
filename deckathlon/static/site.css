@@ -1,0 +1,512 @@
+/**
+ * Application styling.
+ *
+ * @author    Erki Suurjaak
+ * @created   18.04.2020
+ * @modified  03.05.2020
+ */
+
+body {
+  background:      green;
+  color:           gold;
+  position:        absolute;
+  top:             0;
+  left:            0;
+  right:           0;
+  bottom:          0;
+  margin:          0;
+  padding:         15pt;
+  font-family:     sans-serif;
+  font-size:       1.1em;
+}
+
+button {
+  color:           white;
+  cursor:          pointer;
+  padding:         5pt 8pt;
+}
+button:disabled {
+  cursor:          default;
+}
+
+a, a:visited {
+  color:           white;
+  cursor:          pointer;
+  text-decoration: underline;
+}
+
+
+input[type=text],
+input[type=password] {
+  font-size:       1em;
+  padding:         5pt 8pt;
+  width:           100pt;
+}
+input[type=number] {
+  font-size:       0.9em;
+  padding:         5pt 8pt;
+  text-align:      right;
+  width:           50pt;
+}
+textarea {
+  font-family: sans-serif;
+  font-size:       1em;
+  height:          65pt;
+  padding:         5pt 8pt;
+  width:           400pt;
+}
+select {
+  font-size:       0.9em;
+  padding:         5pt 8pt 4pt 4pt;
+  min-width:       150pt;
+}
+th {
+  text-align:      left;
+}
+
+
+
+/** Root element styling. */
+div#main {
+  margin:          0 auto;
+  height:          100%;
+  min-width:       400pt;
+}
+div#main > div {
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  height:          100%;
+}
+body.table {
+  padding-top: 0;
+}
+body.table div#main > div {
+  align-items:     stretch;
+}
+
+
+
+/** Popup dialog styling. */
+div#appdialog {
+  align-items:     center;
+  bottom:          0;
+  display:         flex;
+  justify-content: center;
+  left:            0;
+  position:        absolute;
+  right:           0;
+  top:             0;
+  z-index:         10000;
+}
+div#appdialog div.shadow {
+  background:      black;
+  height:          100%;
+  left:            0;
+  opacity:         0.5;
+  position:        absolute;
+  top:             0;
+  width:           100%;
+}
+div#appdialog div.dialog {
+  background:      white;
+  color:           black;
+  border:          1px solid #5C5C5C;
+  box-shadow:      0 5px 15px rgba(0, 0, 0, 0.5);
+  display:         flex;
+  flex-direction:  column;
+  justify-content: space-between;
+  max-width:       400px;
+  opacity:         1;
+  text-align:      center;
+  z-index:         10001;
+}
+div#appdialog div.content {
+  max-height:      400px;
+  overflow:        auto;
+  padding:         20px 20px 15px 20px;
+  white-space:     pre-line;
+}
+div#appdialog div.buttons {
+  padding:         0px 20px 20px 20px;
+  white-space:     nowrap;
+}
+
+
+
+/** Index page styling. */
+div.template_index > div.controls {
+  position:        absolute;
+  bottom:          0;
+  right:           0;
+  padding:         0 10pt 10pt 0;
+  width:           120pt;
+  display:         flex;
+  flex-direction:  column;
+}
+div.template_index table.tables {
+  min-width:       400pt;
+}
+div.template_index table.tables th:first-child,
+div.template_index table.tables td:first-child {
+  min-width:       200pt;
+}
+div.template_index table.tables th:last-child,
+div.template_index table.tables td:last-child {
+  text-align:      right;
+}
+div.template_index table.new {
+  text-align: left;
+}
+
+
+
+
+/** Table page styling. */
+div.template_table div.table {
+  height:          100%;
+  position:        relative;
+}
+div.template_table > div.controls {
+  position:        absolute;
+  bottom:          0;
+  right:           0;
+  padding:         0 10pt 10pt 0;
+  width:           80pt;
+  display:         flex;
+  flex-direction:  column;
+}
+div.template_table a {
+  font-size:       0.8em;
+}
+
+
+
+/** Player areas styling. */
+body.table div.table div.player {
+  position:        absolute;
+  text-align:      center;
+  width:           200pt;
+}
+body.table div.table div.player.me {
+  bottom:          0;
+  left:            calc(50% - 100pt);
+}
+body.table div.table div.player.pos1of2 {
+  top:             0;
+  left:            calc(50% - 100pt);
+}
+body.table div.table div.player.pos2of2 {
+  bottom:          0;
+  left:            calc(50% - 100pt);
+}
+body.table div.table div.player.pos1of3 {
+  top:             50%;
+  left:            0;
+  text-align:      left;
+}
+body.table div.table div.player.pos2of3 {
+  top:             50%;
+  right:           0;
+  text-align:      right;
+}
+body.table div.table div.player.pos3of3 {
+  bottom:          0;
+  left:            calc(50% - 100pt);
+}
+body.table div.table div.player.pos1of4 {
+  top:             50%;
+  left:            0;
+  text-align:      left;
+}
+body.table div.table div.player.pos2of4 {
+  top:             0;
+  left:            calc(50% - 100pt);
+}
+body.table div.table div.player.pos3of4 {
+  top:             50%;
+  right:           0;
+  text-align:      right;
+}
+body.table div.table div.player.pos4of4 {
+  bottom:          0;
+  left:            calc(50% - 100pt);
+}
+
+
+div.hand {
+  position:        relative;
+}
+
+div.player div.name.turn {
+  font-weight:     bold;
+  text-decoration: underline;
+}
+
+div.table div.player.me div.cards button.look {
+  position:        absolute;
+  width:           80pt;
+  height:          30pt;
+  left:            calc(50% - 40pt);
+  top:             calc(50% - 7pt);
+}
+
+
+div.cards {
+  display:         flex;
+  justify-content: center;
+  height:          45pt;
+}
+div.table div.player.pos1of3 div.cards,
+div.table div.player.pos1of4 div.cards {
+  justify-content: flex-start;
+}
+
+div.table div.player.pos2of3 div.cards,
+div.table div.player.pos3of4 div.cards {
+  justify-content: flex-end;
+}
+
+
+/** Card styling. */
+div.card {
+  background:      white;
+  border-radius:   5pt;
+  position:        relative;
+  width:           29pt;
+  height:          46pt;
+}
+span.card {
+  color:           black;
+  display:         inline-block;
+  font-family:     "DejaVu Sans Condensed";
+  font-size:       40pt;
+}
+div.card span.card {
+  position:        relative;
+  left:            -4pt;
+  top:             -0.8pt;
+}
+
+*[draggable=true] span.card {
+  cursor:          pointer;
+}
+
+span.card.diamonds { color: red; }
+span.card.hearts   { color: red; }
+span.card.back     { color: blue; }
+
+
+
+/** Table center styling. */
+div.table div.tabletop {
+  background:    green;
+  border:        1pt solid white;
+  border-radius: 2pt;
+  padding:       5pt;
+  position:      absolute;
+  top:           calc(50% - 150pt);
+  left:          calc(50% - 150pt);
+  width:         300pt;
+  height:        300pt;
+  z-index:       1;
+}
+
+
+/** Moves styling. */
+div.table div.moves div.trick {
+  max-height:     250pt;
+  max-width:      150pt;
+  overflow-y:     auto;
+}
+div.table div.moves div.trick div.cards {
+  justify-content: flex-start;
+}
+div.table div.moves > div.cards {
+  position:       absolute;
+  bottom:         5pt;
+  left:           45%;
+}
+div.table div.moves div.controls {
+  position:       absolute;
+  bottom:         0;
+  right:          0;
+  padding:        5pt;
+}
+
+
+
+/** Scorecard styling. */
+div.table div.scores {
+  border:          1pt solid white;
+  border-radius:   2pt;
+  font-size:       0.7em;
+  max-height:      100pt;
+  overflow-y:      auto;
+  position:        absolute;
+  top:             -30pt;
+  right:           0;
+}
+div.table div.scores th.index ,
+div.table div.scores td.index {
+  font-weight:     bold;
+  opacity:         0.7;
+  text-align:      right;
+}
+div.table div.scores th.bid,
+div.table div.scores td.bid {
+  font-weight:     normal;
+  opacity:         0.7;
+  text-align:      right;
+}
+div.table div.scores td {
+  text-align:      right;
+  white-space:     nowrap;
+}
+
+
+
+/** Tricks stack styling. */
+div.table div.player div.tricks {
+  display:         flex;
+  justify-content: flex-end;
+  position:        relative;
+  top:             10pt;
+}
+div.table div.player.me div.tricks {
+  position:        absolute;
+  top:             18pt;
+  left:            -100pt;
+}
+div.table div.player div.tricks div.card {
+  cursor:          pointer;
+}
+div.template_table div.dialog div.html {
+  padding-bottom:  10pt;
+}
+div.table div.player.pos1of3 div.tricks,
+div.table div.player.pos1of4 div.tricks {
+  justify-content: flex-start;
+}
+
+div.table div.player.pos2of3 div.tricks,
+div.table div.player.pos3of4 div.tricks {
+  justify-content: flex-end;
+  right:           5pt;
+}
+
+
+
+
+
+/** Bidding and distribution styling. */
+div.table div.bidding,
+div.table div.distribute {
+}
+div.table div.bidding div.bids table {
+  border-collapse: collapse;
+  border-spacing:  0;
+}
+div.table div.bidding div.bids table tr,
+div.table div.bidding div.bids table td {
+  margin:          0;
+  padding:         0;
+}
+div.table div.bidding div.bids table td:first-child {
+  padding-right:   2pt;
+}
+div.table div.bidding select.suite {
+  min-width:       auto;
+}
+div.table div.distribute button.give {
+  position:        absolute;
+  top:             calc(50% - 15pt);
+  left:            calc(50% - 25pt);
+  width:           50pt;
+  height:          30pt;
+}
+div.table div.bidding div.controls {
+  position:        absolute;
+  bottom:          0;
+  right:           0;
+  padding:         5pt;
+}
+div.table div.bidding div.bids {
+  max-height:      200pt;
+  overflow:        auto;
+}
+
+
+div.table div.distribute div.card.drop {
+   width:          27pt;
+   height:         45pt;
+   border:         1pt solid gray;
+   border-radius:  5pt;
+}
+div.table div.distribute div.card.drop span.card {
+/*  margin: -1.5pt -5pt; */
+}
+div.table div.distribute div.player {
+  width:           100pt;
+}
+div.table div.distribute div.player.pos1of2,
+div.table div.distribute div.player.pos2of2,
+div.table div.distribute div.player.pos3of3,
+div.table div.distribute div.player.pos2of4,
+div.table div.distribute div.player.pos4of4 {
+  left:            calc(50% - 50pt);
+}
+
+
+
+/** Talon styling. */
+div.table div.talon {
+  position:        absolute;
+  width:           50pt;
+  height:          70pt;
+  top:             5pt;
+  right:           5pt;
+}
+div.table div.talon div.cards {
+  justify-content: flex-end;
+}
+
+
+
+/** Game options styling. */
+div.table div.opts {
+  position:        absolute;
+  top:             5pt;
+  right:           5pt;
+  text-align:      right;
+}
+div.table div.opts div.trump > div {
+  border:          2pt solid black;
+  border-radius:   5pt;
+  background:      white;
+  width:           25pt;
+  height:          43pt;
+  position:        absolute;
+  right:           0;
+}
+div.table div.opts div.trump span.card {
+  position:        relative;
+  left:            -2pt;
+  top:             3pt;
+  font-size:       35pt;
+}
+
+
+
+@font-face {
+  font-family: "DejaVu Sans Condensed";
+  src: url("media/DejaVuSansCondensed.eot"); /* IE9 Compat Modes */
+  src: url("media/DejaVuSansCondensed.eot?#iefix") format("embedded-opentype"), /* IE6-IE8 */
+       url("media/DejaVuSansCondensed.otf")        format("opentype"), /* Open Type Font */
+       url("media/DejaVuSansCondensed.svg")        format("svg"), /* Legacy iOS */
+       url("media/DejaVuSansCondensed.ttf")        format("truetype"), /* Safari, Android, iOS */
+       url("media/DejaVuSansCondensed.woff")       format("woff"), /* Modern Browsers */
+       url("media/DejaVuSansCondensed.woff2")      format("woff2"); /* Modern Browsers */
+  font-weight: normal;
+  font-style:  normal;
+}

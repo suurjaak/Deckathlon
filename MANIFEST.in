@@ -1,0 +1,2 @@
+recursive-include deckathlon *.py *.tpl *.ini *.css *.js *.gif *.png *.jpg *.ico *.json *.html *.svg *.pem *.po *.eot *.ttf *.woff*
+include deckathlon.sh README.md requirements.txt
