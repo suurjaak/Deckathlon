@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Data model wrapper.
+Data facade.
 
 @author    Erki Suurjaak
 @created   17.04.2020
@@ -11,6 +11,7 @@ import datetime
 import hashlib
 import httplib
 import logging
+import os
 
 from . import conf
 from . import gaming
@@ -25,7 +26,7 @@ def login(username, password):
     """Returns user data row if username and password are valid."""
     passhash = hashlib.pbkdf2_hmac("sha256", password, conf.SecretKey, 10000)
     where = {"username": username, "password": passhash.encode("hex")}
-    data = db.fetch("users", where=where)
+    data = db.fetchone("users", where=where)
     return adapt(data, data and data["id"], "users")
 
 
@@ -38,7 +39,7 @@ def pagedata(request, page, userid=None, **kwargs):
         data, error, status = gaming.Table(userid).index()
 
     if "table" == page:
-        table = db.fetch("tables", "id", shortid=kwargs["shortid"])
+        table = db.fetchone("tables", "id", shortid=kwargs["shortid"])
         if table:
             data, error, status = gaming.Table(userid).poll(table["id"])
         else:
@@ -48,13 +49,15 @@ def pagedata(request, page, userid=None, **kwargs):
         root = request.app.get_url("/")
         data["settings"] = dict(rootURL=root, dataURL=root + "api/",
                                 staticURL=root + "static/",
+                                page=page, 
+                                title=conf.Title,
                                 version=conf.Version,
                                 versiondate=conf.VersionDate)
 
     #if userid: # @todo figure it out
     #    db.update("users", {"dt_online": util.utcnow()}, id=userid)
     if not error and userid:
-        data["user"] = db.fetch("users", id=userid)
+        data["user"] = db.fetchone("users", id=userid)
 
     return adapt(data, userid), error, status
 
@@ -83,12 +86,12 @@ def data_action(datatype, path, op, data, userid=None):
             username, password = (data[x].strip() for x in ("username", "password"))
             if not username or not password:
                 error, status = "Required data missing", httplib.BAD_REQUEST
-            if db.fetch("users", "1", username=username):
+            if db.fetchone("users", "1", username=username):
                 error, status = "Username exists", httplib.CONFLICT
             else:
                 pw = hashlib.pbkdf2_hmac("sha256", password, conf.SecretKey, 10000)
                 userid = db.insert("users", username=username, password=pw.encode("hex"))
-                result = db.fetch("users", id=userid)
+                result = db.fetchone("users", id=userid)
 
     if "PUT" == op:
 
@@ -98,8 +101,8 @@ def data_action(datatype, path, op, data, userid=None):
     if "DELETE" == op:
 
         if "players" == datatype:
-            table = db.fetch("tables", id=("EXPR", ("id IN (SELECT fk_table FROM players "
-                                           "WHERE id = ?)", [path])))
+            table = db.fetchone("tables", id=("EXPR", ("id IN (SELECT fk_table FROM players "
+                                              "WHERE id = ?)", [path])))
             if table:
                 result, error, status = gaming.Table(userid).leave(table["id"], int(path))
             else:
@@ -126,7 +129,7 @@ def poll(args, userid, tableid=None):
     else:
         result, error, status = gaming.Table(userid).poll_index(dt_from)
 
-    return adapt({k: v for k, v in result.items() if v}, userid), error, status
+    return adapt({k: v for k, v in result.items() if v} if result else result, userid), error, status
 
 
 def adapt(data, userid, datatype=None):
@@ -139,28 +142,27 @@ def adapt(data, userid, datatype=None):
 
     if datatype: result = {datatype: data}
     for mytype, mydata in (result or {}).items():
-        if util.get(DB_SCHEMA, mytype, "fields") is None: continue # for mytype, mydata
+        if util.get(conf.DbSchema, mytype, "fields") is None: continue # for mytype, mydata
 
         for mydict in util.listify(mydata):
-            for k, col in DB_SCHEMA[mytype]["fields"].items():
+            for k, col in conf.DbSchema[mytype]["fields"].items():
                 if callable(col.get("adapt")):
                     mydict[k] = col["adapt"](mydict.get(k), mydict, userid)
 
         for mydict in util.listify(mydata):
             for k in list(mydict):
-                col = util.get(DB_SCHEMA, mytype, "fields", k)
+                col = util.get(conf.DbSchema, mytype, "fields", k)
                 if col is None or col.get("drop"): mydict.pop(k)
     if datatype: result = result[datatype]
+    else: result = {k: v for k, v in result.items() if v}
 
     return result
     
 
-def init(dbschema, dbpath, dbstatements):
-    """
-    Initializes or reconfigures data and task model.
-    """
-    global DB_SCHEMA
-    DB_SCHEMA = dbschema
-    if dbpath:
-        util.sqlite_jsonify()
-        db.init(dbpath, dbstatements)
+def init():
+    """Initializes database connection."""
+    db.init(conf.DbEngine, conf.DbOpts)
+    if "sqlite" == conf.DbEngine:
+        p = os.path.join(conf.RootPath, "etc", "db", "sqlite.sql")
+        if os.path.isfile(p):
+            with open(p) as f: db.executescript(f.read())

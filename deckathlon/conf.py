@@ -5,7 +5,7 @@ supporting any JSON-serializable datatype, as well as Python literal eval.
 
 @author      Erki Suurjaak
 @created     18.04.2020
-@modified    03.05.2020
+@modified    08.05.2020
 """
 import os
 import sys
@@ -13,8 +13,8 @@ import sys
 """Program version."""
 Title = "Deckathlon"
 Name = "deckathlon"
-Version = "0.1"
-VersionDate = "03.05.2019"
+Version = "0.1.dev3"
+VersionDate = "08.05.2019"
 
 """Application code root path."""
 RootPath = ApplicationPath = os.path.dirname(os.path.abspath(__file__))
@@ -31,11 +31,17 @@ SessionPath = os.path.join(RootPath, "tmp")
 """Path for HTML templates."""
 TemplatePath = os.path.join(RootPath, "views")
 
+"""UI languages supported in the web interface."""
+Languages = ["en", "et"]
+
 """Default UI language in the web interface."""
 DefaultLanguage = "en"
 
 """Template for Portable Object pathnames with language code placeholder."""
 TranslationTemplate = os.path.join(RootPath, "etc", "i18n", "%s.%%s.po" % Name)
+
+"""Website prefix (e.g. for reverse proxy or the like)."""
+ServerPrefix = ""
 
 """Default IP address and TCP port to run on."""
 ServerIP = "0.0.0.0"
@@ -66,147 +72,12 @@ LogLevel = "DEBUG" # CRITICAL|ERROR|WARNING|INFO|DEBUG|NOTSET
 LogFormat = "%(asctime)s\t%(levelname)s\t%(module)s:%(lineno)s\t%(message)s"
 LogExclusions = [] # List of modules to exclude from logging
 
-"""Local SQLite database path and init statements."""
-DbPath = os.path.join(RootPath, "var", "%s.db" % Name)
-DbStatements = (
+"""Database engine used, "sqlite" or "postgres"."""
+DbEngine = "sqlite"
 
-    """
-    CREATE TABLE IF NOT EXISTS users (
-      id         INTEGER   PRIMARY KEY AUTOINCREMENT NOT NULL,
-      username   TEXT      NOT NULL CHECK (LENGTH(username) > 0),
-      password   TEXT      NOT NULL CHECK (LENGTH(password) > 0),
-      dt_online  TIMESTAMP DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now')),
-      dt_created TIMESTAMP NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now')),
-      dt_changed TIMESTAMP NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now'))
-    )
-    """,
+"""Database options: local SQLite database path if "sqlite" engine."""
+DbOpts = os.path.join(RootPath, "var", "%s.db" % Name)
 
-    """
-    CREATE TABLE IF NOT EXISTS templates (
-        id         INTEGER   PRIMARY KEY AUTOINCREMENT NOT NULL, 
-        fk_creator INTEGER   REFERENCES users (id), 
-        name       TEXT      NOT NULL UNIQUE CHECK (LENGTH(name) > 0), 
-        opts       JSON      NOT NULL DEFAULT '{}', 
-        dt_created TIMESTAMP NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now')), 
-        dt_changed TIMESTAMP NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now')),
-        dt_deleted TIMESTAMP
-    )
-    """,
-
-    """
-    CREATE TABLE IF NOT EXISTS tables (
-      id             INTEGER   PRIMARY KEY AUTOINCREMENT NOT NULL,
-      fk_creator     INTEGER   NOT NULL REFERENCES users (id),
-      fk_host        INTEGER   NOT NULL REFERENCES users (id),
-      fk_template    INTEGER   NOT NULL REFERENCES templates (id),
-      name           TEXT      NOT NULL,
-      shortid        TEXT      NOT NULL UNIQUE,
-      public         INTEGER   NOT NULL DEFAULT 0,
-      games          INTEGER   NOT NULL DEFAULT 0,
-      players        INTEGER   NOT NULL DEFAULT 0,
-      status         TEXT      DEFAULT 'new',
-      bids           JSON      NOT NULL DEFAULT '[]',
-      scores         JSON      NOT NULL DEFAULT '[]',
-      scores_history JSON      NOT NULL DEFAULT '[]',
-      dt_created     TIMESTAMP NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now')),
-      dt_changed     TIMESTAMP NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now'))
-    )
-    """,
-
-    """
-    CREATE TABLE IF NOT EXISTS table_users (
-        id         INTEGER   PRIMARY KEY AUTOINCREMENT NOT NULL, 
-        fk_table   INTEGER   NOT NULL REFERENCES tables (id), 
-        fk_user    INTEGER   NOT NULL REFERENCES users (id), 
-        dt_online  TIMESTAMP DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now')),
-        dt_created TIMESTAMP NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now')),
-        dt_changed TIMESTAMP NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now')),
-        dt_deleted TIMESTAMP
-    )
-    """,
-
-    """
-    CREATE TABLE IF NOT EXISTS games (
-        id         INTEGER   PRIMARY KEY AUTOINCREMENT NOT NULL, 
-        fk_table   INTEGER   NOT NULL REFERENCES tables (id), 
-        fk_player  INTEGER   REFERENCES players (id), 
-        sequence   INTEGER   NOT NULL DEFAULT 0, 
-        status     TEXT      NOT NULL DEFAULT 'new', 
-        opts       JSON      NOT NULL DEFAULT '{}', 
-        deck       JSON      NOT NULL DEFAULT '[]', 
-        hands      JSON      NOT NULL DEFAULT '{}', 
-        talon      JSON      NOT NULL DEFAULT '[]', 
-        talon0     JSON      NOT NULL DEFAULT '[]', 
-        bids       JSON      NOT NULL DEFAULT '[]', 
-        bid        JSON      NOT NULL DEFAULT '{}', 
-        tricks     JSON      NOT NULL DEFAULT '[]', 
-        trick      JSON      NOT NULL DEFAULT '[]', 
-        moves      JSON      DEFAULT '[]', 
-        discards   JSON      NOT NULL DEFAULT '[]', 
-        score      JSON      NOT NULL DEFAULT '{}', 
-        dt_created TIMESTAMP NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now')), 
-        dt_changed TIMESTAMP NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now'))
-    )
-    """,
-
-    """
-    CREATE TABLE IF NOT EXISTS players (
-        id         INTEGER   PRIMARY KEY AUTOINCREMENT NOT NULL, 
-        fk_table   INTEGER   NOT NULL REFERENCES tables (id), 
-        fk_game    INTEGER   REFERENCES games (id), 
-        fk_user    INTEGER   NOT NULL REFERENCES users (id), 
-        sequence   INTEGER   NOT NULL DEFAULT 0, 
-        status     TEXT, 
-        expected   JSON      DEFAULT '{}', 
-        hand       JSON      NOT NULL DEFAULT '[]', 
-        hand0      JSON      NOT NULL DEFAULT '[]', 
-        moves      JSON      NOT NULL DEFAULT '[]', 
-        tricks     JSON      NOT NULL DEFAULT '[]', 
-        dt_created TIMESTAMP NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now')), 
-        dt_changed TIMESTAMP NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now')),
-        dt_deleted TIMESTAMP
-    )
-    """,
-
-    """
-    CREATE TABLE IF NOT EXISTS log (
-        id         INTEGER   PRIMARY KEY AUTOINCREMENT NOT NULL, 
-        action     TEXT, 
-        data       JSON, 
-        dt_created TIMESTAMP DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now'))
-    )
-    """,
-
-    """
-    CREATE TRIGGER IF NOT EXISTS on_update_games AFTER UPDATE ON games
-    BEGIN
-    UPDATE games SET dt_changed = STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now') WHERE id = NEW.id;
-    END;
-    """,
-
-    """
-    CREATE TRIGGER IF NOT EXISTS on_update_players AFTER UPDATE ON players
-    BEGIN
-    UPDATE players SET dt_changed = STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now') WHERE id = NEW.id;
-    END;
-    """,
-
-    """
-    CREATE TRIGGER IF NOT EXISTS on_update_tables AFTER UPDATE ON tables
-    BEGIN
-    UPDATE tables SET dt_changed = STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now') WHERE id = NEW.id;
-    END;
-    """,
-
-    """
-    CREATE TRIGGER IF NOT EXISTS on_update_templates AFTER UPDATE ON templates
-    BEGIN
-    UPDATE templates SET dt_changed = STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now') WHERE id = NEW.id;
-    END;
-    """,
-
-    "INSERT OR IGNORE INTO users (id, username, password) VALUES (1, 'admin', '0fb57789d87a97f7949ab902b3f2d8001acb6ddea7b4fc0b46a4681124245f4e')",
-)
 """
 Data description.
 
@@ -272,21 +143,23 @@ DbSchema = {
     "tables": {
         "key":     "id",
         "fields":  {
-            "id":          {},
-            "fk_host":     {"fk": "users"},
-            "fk_template": {"fk": "templates"},
-            "name":        {},
-            "shortid":     {},
-            "public":      {},
-            "sequence":    {},
-            "status":      {},
-            "games":       {},
-            "players":     {},
-            "status":      {},
-            "bids":        {},
-            "scores":      {},
-            "dt_created":  {},
-            "dt_changed":  {},
+            "id":             {},
+            "fk_host":        {"fk": "users"},
+            "fk_template":    {"fk": "templates"},
+            "name":           {},
+            "shortid":        {},
+            "public":         {},
+            "sequence":       {},
+            "status":         {},
+            "games":          {},
+            "players":        {},
+            "status":         {},
+            "bids":           {},
+            "scores":         {},
+            "bids_history":   {},
+            "scores_history": {},
+            "dt_created":     {},
+            "dt_changed":     {},
         },
         "fklabel": "name",
         "order":   ["public", "name"],

@@ -1,5 +1,7 @@
+Deckathlon
+==========
 
-
+A generic card game engine.
 
 
 

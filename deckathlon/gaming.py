@@ -1,29 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-
-
-@todo kuidas teada kes on online?
-      pollis userid järgi update puhtalt ei piisa,
-      ta peab lauas ka olema.
-      ok, laud saab seda pollis teha, uuendada playerit.
-      aha, ongi playerit vaja aint ju.
-      usersil saab ka olla, lisaks.
-
-
-nii, aga kuidas ja mida teha kui keegi on pikalt offline olnud?
-vast autokickima ei hakka? vbl lihtsalt märgib ta laual offline?
-ja host saab kickida kui tahab?
-
-samas oleks mugav kui saaks poole mängu pealt ka keegi teine asemele tulla.
-
-vähemalt table_users (need mis pole players) puhul võib kasutada __deleted__
-
-
-
+Gaming engine.
 
 @author    Erki Suurjaak
 @created   19.04.2020
-@modified  03.05.2020
+@modified  05.05.2020
 ------------------------------------------------------------------------------
 """
 import collections
@@ -44,11 +25,11 @@ from . lib import db, util
 logger = logging.getLogger(__name__)
 
 
-
-
-
-
 class Table(object):
+    """
+    Game tables functionality.
+    """
+
 
     def __init__(self, userid):
         self._userid      = userid
@@ -71,19 +52,19 @@ class Table(object):
         """
         result, error, status = None, None, httplib.CREATED
 
-        template = self._tx.fetch("templates", id=data["fk_template"])
+        template = self._tx.fetchone("templates", id=data["fk_template"])
         if not template:
             error, status = "Template not found", httplib.BAD_REQUEST
 
         if not error:
             data = {k: data[k] for k in data if k in ("name", "fk_template", "public")}
             data["shortid"] = None
-            while not data["shortid"] or self._tx.fetch("tables", shortid=data["shortid"]):
+            while not data["shortid"] or self._tx.fetchone("tables", shortid=data["shortid"]):
                 data["shortid"] = "".join(random.sample(string.ascii_lowercase, k=4))
             data["fk_creator"] = data["fk_host"] = self._userid
             data["players"] = 1
 
-            result = self._tx.fetch("tables", id=self._tx.insert("tables", data))
+            result = self._tx.fetchone("tables", id=self._tx.insert("tables", data))
             self._tx.insert("table_users", fk_table=result["id"], fk_user=self._userid)
             self._tx.insert("players",     fk_table=result["id"], fk_user=self._userid)
             self._tx.commit()
@@ -102,14 +83,12 @@ class Table(object):
 
         data = {k: data[k] for k in data if k in ("name", "fk_template", "public")}
 
-        table = self._tx.fetch("tables", id=tableid)
-        if item and self._userid == item["fk_host"]:
+        table = self._tx.fetchone("tables", id=tableid)
+        if table and self._userid == table["fk_host"]:
             self._tx.update("tables", data, id=tableid)
-            self._tx.update("table_users", {"dt_online": util.utcnow()},
-                            fk_table=tableid, fk_user=self._userid)
             self._tx.commit()
-            result = self._tx.fetch("tables", id=tableid)
-        elif item:
+            result = self._tx.fetchone("tables", id=tableid)
+        elif table:
             error, status = "Forbidden", httplib.FORBIDDEN
         else:
             error, status = "Not found", httplib.NOT_FOUND
@@ -124,8 +103,8 @@ class Table(object):
         """
         result, error, status = None, None, httplib.CREATED
 
-        if self._tx.fetch("table_users", fk_table=tableid, fk_user=self._userid):
-            table = self._table = self._tx.fetch("tables", id=tableid)
+        if self._tx.fetchone("table_users", fk_table=tableid, fk_user=self._userid):
+            table = self._table = self._tx.fetchone("tables", id=tableid)
         else:
             error, status = "Forbidden", httplib.FORBIDDEN
 
@@ -140,11 +119,11 @@ class Table(object):
                                           fk_table=table["id"], fk_user=self._userid)
                 self._tx.update("tables", {"players": len(players) + 1},
                                 id=table["id"])
-                result = self._tx.fetch("players", id=playerid)
+                result = self._tx.fetchone("players", id=playerid)
                 self._tx.commit()
             elif len(players) >= util.get(template, "opts", "players", 1):
                 error, status = "Table full", httplib.CONFLICT
-        else:
+        elif not table:
             error, status = "Not found", httplib.NOT_FOUND
 
         return result, error, status
@@ -158,7 +137,7 @@ class Table(object):
         """
         result, error, status = None, None, httplib.OK
 
-        table = self._tx.fetch("tables", id=tableid)
+        table = self._tx.fetchone("tables", id=tableid)
 
         userid = None
         if not table:
@@ -196,11 +175,11 @@ class Table(object):
         """
         result, error, status = {}, None, httplib.OK
 
-        result["tables"]    = db.fetchall("tables", fk_host=self._userid)
-        result["tables"]   += db.fetchall("tables", fk_host=("!=", self._userid), public=True)
+        result["tables"]    = self._tx.fetchall("tables", fk_host=self._userid)
+        result["tables"]   += self._tx.fetchall("tables", fk_host=("!=", self._userid), public=True)
         hosters             = util.unwrap(result["tables"], "fk_host")
-        result["users"]     = db.fetchall("users", id=("IN", set(hosters)))
-        result["templates"] = db.fetchall("templates", dt_deleted=None)
+        result["users"]     = self._tx.fetchall("users", id=("IN", set(hosters)))
+        result["templates"] = self._tx.fetchall("templates", dt_deleted=None)
 
         return result, error, status
 
@@ -213,7 +192,7 @@ class Table(object):
         """
         result, error, status = None, None, httplib.OK
 
-        table = self._tx.fetch("tables", id=tableid)
+        table = self._tx.fetchone("tables", id=tableid)
 
         if not table:
             error, status = "Not found", httplib.NOT_FOUND
@@ -239,7 +218,8 @@ class Table(object):
             if game and not game["dt_changed"] > dt_from: game = None
             table_users = [x for x in table_users if x["dt_changed"] > dt_from]
             players     = [x for x in players     if x["dt_changed"] > dt_from]
-            users       = [x for x in users       if x["dt_changed"] > dt_from]
+            userids = set(util.unwrap(table_users, "fk_user")) | set(util.unwrap(players, "fk_user"))
+            users = [x for x in users if x["dt_changed"] > dt_from or x["id"] in userids]
 
             result = dict(tables=[table], games=[game], players=players, users=users,
                           table_users=table_users, templates=[template])
@@ -266,18 +246,24 @@ class Table(object):
 
         where = {"EXPR": ("(public = ? OR fk_host = ?)", [True, self._userid])}
         if dt_from: where["dt_changed"] = (">=", dt_from)
-        result["tables"] = db.fetchall("tables", where=where)
+        result["tables"] = self._tx.fetchall("tables", where=where)
+
+        where = {"id": ("IN", util.unwrap(result["tables"], "fk_host"))} \
+                if result["tables"] else {}
+        if where: result["users"] = self._tx.fetchall("users", where=where)
 
         where = {}
         if dt_from: where["dt_changed"] = (">=", dt_from)
-        result["templates"] = db.fetchall("templates", where=where)
+        result["templates"] = self._tx.fetchall("templates", where=where)
 
         result = {k: v for k, v in result.items() if any(v)}
 
-        for datatype in "templates", :
-            dels = db.fetchall(datatype, "id", dt_changed=(">", dt_from),
-                               dt_deleted=("!=", None))
-            if dels: result.setdefault("__deleted__", {})[datatype] = dels
+        dels = self._tx.fetchall("templates", "id", dt_changed=(">", dt_from),
+                                 dt_deleted=("!=", None))
+        if dels: result.setdefault("__deleted__", {})["templates"] = util.unwrap(dels)
+        dels = self._tx.fetchall("tables", "id", dt_changed=(">", dt_from),
+                                 fk_host=("!=", self._userid), public=False)
+        if dels: result.setdefault("__deleted__", {})["tables"] = util.unwrap(dels)
 
         return result, error, status
 
@@ -305,18 +291,16 @@ class Table(object):
                 error, status = "Forbidden", httplib.FORBIDDEN
             else:
                 self._table_users = table_users
-                self._table = self._tx.fetch("tables", id=tableid)
+                self._table = self._tx.fetchone("tables", id=tableid)
                 error, status = HANDLERS[data["action"]](data)
 
             if error:
                 self._tx.rollback()
             else:
                 self._tx.insert("log", action=data.pop("action"),
-                          data=dict(data, fk_user=self._userid))
+                          data=data, fk_user=self._userid)
                 self._tx.commit()
 
-            self._tx.update("table_users", {"dt_online": util.utcnow()},
-                            fk_table=tableid, fk_user=self._userid)
             self._tx.commit()
 
 
@@ -351,18 +335,47 @@ class Table(object):
                     "hands": {k: v for k, v in dist.items() if k != "talon"}}
             if "talon" in dist: game["talon"] = game["talon0"] = dist["talon"]
 
+            expecteds = {} # {fk_player: {..}}
+
             # Set starting player, next from previous game's starting player
-            player0 = player
-            game0 = self._tx.fetch("games", fk_table=table["id"], sequence=table["games"])
-            if game0:
-                player0id = None
-                if game0["bids"]:
-                    player0id = int(game0["bids"][0]["fk_player"])
-                elif game0["moves"]:
-                    player0id = int(game0["moves"][0][0]["fk_player"])
-                if player0id:
-                    player0 = next(x for x in players if x["id"] == player0id)
-            game["fk_player"] = players[(players.index(player0) + 1) % len(players)]["id"]
+            game0 = self._tx.fetchone("games", fk_table=table["id"], sequence=table["games"])
+
+            if game0 and game0["score"] and util.get(template, "opts", "nextgame", "distribute"):
+                # Game starts with players exchanging cards
+
+                game["status"] = "distributing"
+                if util.get(template, "opts", "nextgame", "distribute", "ranking"):
+
+                    ranking = {int(k): v for k, v in game0["score"].items()}
+                    playersx = sorted([x for x in players if x["id"] in ranking],
+                                      key=lambda x: ranking[x["id"]])
+                    count = util.get(template, "opts", "nextgame", "distribute", "max")
+
+                    for i, player1 in enumerate(playersx):
+                        if i >= len(playersx) / 2:
+                            break # for i, (..)
+                        player2 = playersx[-(i + 1)]
+                        pchanges1 = {"action": "distribute",
+                                     "distribute": {player2["id"]: count - i}}
+                        pchanges2 = {"action": "distribute",
+                                     "distribute": {player1["id"]: count - i}}
+                        expecteds[player1["id"]] = pchanges1
+                        expecteds[player2["id"]] = pchanges2
+
+            else:
+                player0 = player
+                if game0:
+                    player0id = None
+                    if game0["bids"]:
+                        # Next from previous game's first bidder
+                        player0id = int(game0["bids"][0]["fk_player"])
+                    elif game0["tricks"]:
+                        # Next from previous game's first mover
+                        player0id = int(game0["tricks"][0][0]["fk_player"])
+                    if player0id:
+                        player0 = next(x for x in players if x["id"] == player0id)
+
+                game["fk_player"] = players[(players.index(player0) + 1) % len(players)]["id"]
 
             gameid = self._tx.insert("games", game)
 
@@ -371,6 +384,17 @@ class Table(object):
                 pchanges["hand"] = pchanges["hand0"] = dist[p["id"]]
                 if util.get(template, "opts", "bidding", "blind"):
                     pchanges["status"] = "blind"
+
+                if p["id"] == game.get("fk_player"):
+                    pchanges["expected"] = {}
+                    if util.get(template, "opts", "bidding"):
+                        pchanges["expected"]["bid"] = True
+                    else:
+                        pchanges["expected"]["move"] = True
+                        if util.get(template, "opts", "move", "cards"):
+                            pchanges["expected"]["cards"] = util.get(template, "opts", "move", "cards")
+                elif p["id"] in expecteds:
+                    pchanges["expected"] = expecteds[p["id"]]
                 self._tx.update("players", pchanges, id=p["id"])
 
             tchanges = {"status": "ongoing", "games": game["sequence"]}
@@ -387,7 +411,7 @@ class Table(object):
         """
         error, status = None, httplib.OK
 
-        table, game = self.populate(game=True)
+        table, game, players = self.populate(game=True, players=True)
 
         if self._userid != table["fk_host"]:
             error, status = "Forbidden", httplib.FORBIDDEN
@@ -398,6 +422,7 @@ class Table(object):
             tchanges = {"status": "ended"}
             self._tx.update("games", gchanges,  id=game["id"])
             self._tx.update("tables", tchanges, id=table["id"])
+            for p in players: self._tx.update("players", {"status": ""}, id=p["id"])
             self._tx.commit()
 
         return error, status
@@ -415,11 +440,12 @@ class Table(object):
 
         if self._userid != table["fk_host"]:
             error, status = "Forbidden", httplib.FORBIDDEN
-        elif "complete" != table["status"]:
-            error, status = "Game not completed", httplib.CONFLICT
         else:
-            tchanges = {"status": "new", "games": 0, "bids": [],
-                        "scores_history": table["scores_history"] + [table["scores"]]}
+            tchanges = {"status": "new", "games": 0, "bids": [], "scores": []}
+            if table["scores"]:
+                tchanges["scores_history"] = table["scores_history"] + [table["scores"]]
+            if table["bids"]:
+                tchanges["bids_history"]   = table["bids_history"]   + [table["bids"]]
             self._tx.update("tables", tchanges, id=table["id"])
             self._table.update(tchanges)
             error, status = self.start()
@@ -471,7 +497,7 @@ class Table(object):
             elif not do_pass and bid_beyond_limit(template, player, bid, "min"):
                 error, status = "Bid too small", httplib.BAD_REQUEST
             elif not do_pass and bid_beyond_limit(template, player, bid, "max"):
-                error, status = "Bid too large", httplib.BAD_REQUEST
+                error, status = "Bid too high", httplib.BAD_REQUEST
             elif not do_pass \
             and util.get(template, "opts", "bidding", "step") is not None \
             and bid["number"] % template["opts"]["bidding"]["step"]:
@@ -565,43 +591,110 @@ class Table(object):
 
         if "distributing" != game["status"]:
             error, status = "Not in distributing phase", httplib.CONFLICT
-        elif game["fk_player"] != player["id"]:
-            error, status = "Not player's turn", httplib.FORBIDDEN
         elif not util.get(player, "expected", "distribute"):
             error, status = "Not in distributing phase", httplib.FORBIDDEN
         elif not data.get("data"):
             error, status = "Distribution missing data", httplib.BAD_REQUEST
+        elif game["fk_player"] != player["id"] \
+        and not util.get(template, "opts", "nextgame", "distribute"):
+            error, status = "Not player's turn", httplib.FORBIDDEN
         else:
-            dist = {int(k): v for k, v in data["data"].items()}
+            dist = {int(k): sorted(v, cmp=lambda a, b: -cmp_cards(template, a, b))
+                    for k, v in data["data"].items()}
             expected = {int(k): v for k, v in player["expected"]["distribute"].items()}
+            allgiven = sorted((x for xx in dist.values() for x in xx),
+                              cmp=lambda a, b: -cmp_cards(template, a, b))
 
-            if set(dist) != set(expected):
-                error, status = "Distributing to unknown players", httplib.BAD_REQUEST
-            elif len(set(x for xx in dist.values() for x in xx) & set(player["hand"])) != len(dist):
-                error, status = "Distributing cards not in hand", httplib.BAD_REQUEST
+            if set(dist) - set(util.unwrap(players, "id")) \
+            or set(dist) - set(expected):
+                error, status = "Unknown players", httplib.BAD_REQUEST
+            elif len(drop(player["hand"], allgiven)) > len(player["hand"]) - len(allgiven):
+                error, status = "No such cards", httplib.BAD_REQUEST
             for fk_player, count in () if error else expected.items():
                 if count != len(dist.get(fk_player) or []):
                     error, status = "Wrong amount being distributed", httplib.BAD_REQUEST
                     break # for fk_player
 
+
+        if not error and util.get(template, "opts", "nextgame", "distribute", "ranking"):
+
+            game0 = self._tx.fetchone("games", fk_table=table["id"], sequence=table["games"] - 1)
+            ranking = {int(k): v for k, v in game0["score"].items()}
+            playersx = sorted([x for x in players if x["id"] in ranking],
+                              key=lambda x: ranking[x["id"]])
+            if ranking[player["id"]] > len(playersx) / 2:
+                # The lower half of ranking needs to give top cards
+                phand = drop(player["hand"], allgiven)
+                if strength(template, phand[0]) > strength(template, allgiven[-1]):
+                    error, status = "Must give top cards", httplib.BAD_REQUEST
+
         if not error:
-            gchanges = {"status": "ongoing"}
-            pchanges = {"expected": {}}
+            gchanges = {}
+            pchanges = {"expected": {}, "status": ""}
 
-            cards_given = []
-            for fk_player, cards in dist.items():
-                player2 = next((x for x in players if x["id"] == fk_player), None)
-                pchanges2 = {"hand": player2["hand"] + cards}
-                pchanges2["hand"].sort(cmp=lambda a, b: -cmp_cards(template, a, b))
-                self._tx.update("players", pchanges2, id=fk_player)
-                cards_given.extend(cards)
+            if util.get(template, "opts", "nextgame", "distribute"):
+                # Multiple players distributing at once
 
-            if util.get(template, "opts", "move", "cards"):
-                pchanges["expected"] = {"cards": util.get(template, "opts", "move", "cards")}
+                move = next({"cards": cc, "fk_player2": pid}
+                            for pid, cc in dist.items())
+                gmove = dict(move, fk_player=player["id"])
 
-            pchanges["hand"] = drop(player["hand"], cards_given)
-            self._tx.update("games",   gchanges, id=game["id"])
-            self._tx.update("players", pchanges, id=player["id"])
+                pchanges["moves"] = copy.deepcopy(player["moves"])
+                gchanges["moves"] = copy.deepcopy(game["moves"])
+                if not player["moves"]: pchanges["moves"].append([])
+                if not game["moves"]:   gchanges["moves"].append([])
+                pchanges["moves"][-1].append(move)
+                gchanges["moves"][-1].append(gmove)
+                pchanges["hand"] = drop(player["hand"], allgiven)
+
+                self._tx.update("players", pchanges, id=player["id"])
+                player.update(pchanges)
+
+                if not any(util.get(x, "expected", "distribute") for x in players):
+                    # All players have distributed who were expected to
+                    players = self._tx.fetchall("players", fk_table=table["id"],
+                                                dt_deleted=None, order="sequence")
+                    for pmove in gchanges["moves"][-1]:
+                        # Update receiving player hands
+                        player2 = next(x for x in players if x["id"] == pmove["fk_player2"])
+                        pchanges2 = {"hand": player2["hand"] + pmove["cards"]}
+                        pchanges2["hand"].sort(cmp=lambda a, b: -cmp_cards(template, a, b))
+                        self._tx.update("players", pchanges2, id=player2["id"])
+
+                    if util.get(template, "opts", "lead", "0", "ranking") is not None:
+                        gchanges["fk_player"] = playersx[util.get(template, "opts", "lead", "0", "ranking")]["id"]
+                    else:
+                        player0id = int(game0["tricks"][0][0]["fk_player"])
+                        player0 = next(x for x in players if x["id"] == player0id)
+                        gchanges["fk_player"] = players[(players.index(player0) + 1) % len(players)]["id"]
+
+                    gchanges["status"] = "ongoing"
+                    pchanges2 = {"expected": {"move": True}}
+                    if util.get(template, "opts", "move", "cards"):
+                        pchanges2["expected"]["cards"] = util.get(template, "opts", "move", "cards")
+                    self._tx.update("players", pchanges2, id=gchanges["fk_player"])
+
+                self._tx.update("games", gchanges, id=game["id"])
+
+
+            else:
+                # Singple player making distributing move
+                gchanges = {"status": "ongoing"}
+                pchanges = {"expected": {}}
+
+                for fk_player, cards in dist.items():
+                    player2 = next(x for x in players if x["id"] == fk_player)
+                    pchanges2 = {"hand": player2["hand"] + cards}
+                    pchanges2["hand"].sort(cmp=lambda a, b: -cmp_cards(template, a, b))
+                    self._tx.update("players", pchanges2, id=fk_player)
+
+                pchanges["expected"] = {"move": True}
+                if util.get(template, "opts", "move", "cards"):
+                    pchanges["expected"]["cards"] = util.get(template, "opts", "move", "cards")
+                pchanges["hand"] = drop(player["hand"], allgiven)
+
+                self._tx.update("games",   gchanges, id=game["id"])
+                self._tx.update("players", pchanges, id=player["id"])
 
         return error, status
 
@@ -624,7 +717,7 @@ class Table(object):
             cards = data["data"].get("cards") or []
             do_pass, do_crawl, do_trump = (data["data"].get(x) for x in 
                                            ("pass", "crawl", "trump"))
-            do_special = next((x for x in util.get(template, "opts", "move", "special") or []
+            do_special = next((x for x in util.get(template, "opts", "move", "special") or {}
                                if x != "trump" and data["data"].get(x)), None)
             expected = player["expected"].get("cards")
 
@@ -634,7 +727,7 @@ class Table(object):
                 error, status = "Can not pass", httplib.BAD_REQUEST
             elif not cards and not do_pass:
                 error, status = "Not the right amount of cards", httplib.BAD_REQUEST
-            elif set(cards) - set(player["hand"]):
+            elif len(drop(player["hand"], cards)) > len(player["hand"]) - len(cards):
                 error, status = "No such cards", httplib.BAD_REQUEST
             elif isinstance(util.get(template, "opts", "move", "cards"), (int, long)) \
             and len(cards) != util.get(template, "opts", "move", "cards"):
@@ -657,13 +750,16 @@ class Table(object):
                 error, status = "Not trump card", httplib.FORBIDDEN
 
             elif do_special and util.get(template, "opts", "move", "special", do_special, len(game["tricks"])) == False:
-                error, status = "Cannot make %s this round" % do_special, httplib.BAD_REQUEST
+                error, status = "Cannot make {0} this round".format(do_special), httplib.BAD_REQUEST
             elif do_special and not any(len(set(player["hand"]) & set(cc)) == len(cc)
                                       for cc in util.get(template, "opts", "move", "special", do_special, "*")):
-                error, status = "No cards to make %s" % do_special, httplib.FORBIDDEN
+                error, status = "No cards to make {0}".format(do_special), httplib.FORBIDDEN
             elif do_special and not any(set(cards) & set(cc)
                                       for cc in util.get(template, "opts", "move", "special", do_special, "*")):
-                error, status = "Not %s card" % do_special, httplib.FORBIDDEN
+                error, status = "Not {0} card".format(do_special), httplib.FORBIDDEN
+            elif do_special and util.get(template, "opts", "move", "special", do_special, "condition") \
+            and not util.get(game, "opts", util.get(template, "opts", "move", "special", do_special, "condition")):
+                error, status = "Not meeting {0} condition: {1}".format(do_special, util.get(template, "opts", "move", "special", do_special, "condition")), httplib.FORBIDDEN
 
 
         if not error:
@@ -696,6 +792,8 @@ class Table(object):
             if do_trump:
                 move["trump"] = True
                 gchanges["opts"] = dict(game["opts"], trump=suite(cards[0]))
+            if do_special:
+                move[do_special] = True
             if do_crawl:
                 move["crawl"] = True
             if do_pass:
@@ -714,7 +812,10 @@ class Table(object):
             gchanges["trick"].append(gmove)
 
             player.update(pchanges)
-            players_left = [x for x in players if x["hand"]]
+            playerids_ingame = set(x["id"] for x in players if x["hand"])
+            playerids_passed = set(x["fk_player"] for x in gchanges["trick"] if x.get("pass"))
+            playerid_lastmove = next((x["fk_player"] for x in gchanges["trick"][::-1]
+                                      if not x.get("pass")), None)
 
             round_over = game_over = False
             if util.get(template, "opts", "trick") and len(gchanges["trick"]) == len(players):
@@ -725,14 +826,13 @@ class Table(object):
             and has_allofakind(template, gchanges["trick"]):
                 # Trick ends with all of a kind
                 round_over = True
-            elif do_pass and util.get(template, "opts", "move", "win", "last") \
-            and len(set(x["fk_player"] for x in gchanges["trick"] if x.get("pass"))) >= len(players_left) - 1:
-                # All except one have passed
-                round_over = True
-            elif len(players_left) < 2:
+            elif do_pass and not util.get(template, "opts", "trick") \
+            and util.get(template, "opts", "move", "win", "last") \
+            and len(playerids_ingame - playerids_passed - set([playerid_lastmove])) < 1:
+                # All except one have passed or played their last
                 round_over = True
 
-            if round_over and len(players_left) < 2:
+            if round_over and len(playerids_ingame) < 2:
                 # Only one or zero players have any cards left
                 game_over = True
 
@@ -748,9 +848,7 @@ class Table(object):
                 if util.get(template, "opts", "trick"):
                     pchanges2["tricks"] = copy.deepcopy(player2["tricks"]) + [gchanges["trick"]]
 
-                gchanges["discards"] = copy.deepcopy(game["discards"])
-                if not game["discards"]: gchanges["discards"].append([])
-                gchanges["discards"][-1].append(gchanges["trick"])
+                gchanges["discards"] = copy.deepcopy(game["discards"]) + [gchanges["trick"]]
 
                 gchanges["tricks"] = copy.deepcopy(game["tricks"]) + [gchanges["trick"]]
                 gchanges["trick"] = []
@@ -765,7 +863,7 @@ class Table(object):
             if tchanges:  self._tx.update("tables",  tchanges,  id=table["id"])
 
             if game_over:
-                game    = self._tx.fetch   ("games",   fk_table=table["id"], order=("dt_created", True))
+                game    = self._tx.fetchone("games",   fk_table=table["id"], order=("dt_created", True))
                 players = self._tx.fetchall("players", fk_table=table["id"], dt_deleted=None, order="sequence")
 
                 gchanges = {"status": "ended", "fk_player": table["fk_host"]}
@@ -784,6 +882,8 @@ class Table(object):
 
                 self._tx.update("games",   gchanges, id=game["id"])
                 self._tx.update("tables",  tchanges, id=table["id"])
+                for p in players: self._tx.update("players", {"dt_changed": util.utcnow()}, id=p["id"])
+                    
 
 
         return error, status
@@ -796,9 +896,9 @@ class Table(object):
         result = [self._table]
 
         if template and not self._template:
-            self._template = self._tx.fetch("templates", id=self._table["fk_template"])
+            self._template = self._tx.fetchone("templates", id=self._table["fk_template"])
         if game and not self._game:
-            self._game = self._tx.fetch("games", fk_table=self._table["id"], sequence=self._table["games"])
+            self._game = self._tx.fetchone("games", fk_table=self._table["id"], sequence=self._table["games"])
         if (players or player) and self._players is None:
             self._players = self._tx.fetchall("players", fk_table=self._table["id"], dt_deleted=None, order="sequence")
         if player and not self._player:
@@ -883,9 +983,8 @@ class Table(object):
             faceup = True
 
         if faceup is None and field == "moves":
-            # Render only previous and current move visible
-            result = util.recursive_decode(value[:-2], [hider]) + value[-2:]
-            faceup = True
+            # Moves are always hidden by default
+            faceup = False
 
         if not faceup:
             result = util.recursive_decode(value, [hider])
@@ -913,8 +1012,7 @@ def distribute_deck(template, players, deck):
             if not deck: break # for p
             result[p["id"]].append(deck.pop(0))
 
-        if len(deck) < len(players) or maxhand \
-        and any(len(result[p["id"]]) >= maxhand for p in players) \
+        if maxhand and any(len(result[p["id"]]) >= maxhand for p in players) \
         or "talon" in template["opts"] and len(deck) <= len(players):
             break # while
 
@@ -952,7 +1050,6 @@ def round_winner(template, game, players, trick):
     playerid = trick[0]["fk_player"]
 
     if util.get(template, "opts", "trick"):
-        strengths = util.get(template, "opts", "strengths")
         wsuite, wlevel = None, None
         if util.get(template, "opts", "move", "win", "suite"):
             wsuite = suite(next(x["cards"][0] for x in trick if x.get("cards")))
@@ -965,7 +1062,7 @@ def round_winner(template, game, players, trick):
             if util.get(template, "opts", "trump") \
             and msuite == util.get(game, "opts", "trump") and msuite != wsuite:
                 wsuite, wlevel = msuite, mlevel
-            if msuite == wsuite and strengths.index(mlevel) >= strengths.index(wlevel):
+            if msuite == wsuite and strength(template, mlevel) >= strength(template, wlevel):
                 wlevel, playerid = mlevel, move["fk_player"]
 
     elif util.get(template, "opts", "move", "win", "last"):
@@ -1028,6 +1125,7 @@ def table_points(template, table, lastscores):
     for playerid, score in lastscores.items():
         if not score and copts and copts.get("times"):
             allscores = [x.get(playerid, x.get(str(playerid))) for x in table["scores"]]
+            allscores = [x for x in allscores if x is not None]
             allscores += allscores[-1:] # No point change -> prev score repeats
             if len(allscores) >= copts["times"] \
             and len(set(allscores[-copts["times"] - 1:])) == 1:
@@ -1138,8 +1236,8 @@ def level(card):
 
 
 def strength(template, card):
-    """Returns card strength in template strengths order."""
-    return util.get(template, "opts", "strengths").index(card)
+    """Returns card or level strength in template level strengths order."""
+    return util.get(template, "opts", "strengths").index(level(card))
 
 
 def points(template, card):
@@ -1173,11 +1271,6 @@ def apply_op(value, opts):
         result = value + opts.get("value", 0)
     return result    
 
-
-def validate_template(template):
-    """Returns a list of errors if template options are invalid."""
-    result = [" @todo "]
-    return result
 
 
 
@@ -1234,8 +1327,8 @@ if "__main__" == __name__:
 
     from deckathlon import model
     model.init(conf.DbSchema, conf.DbPath, conf.DbStatements)
-    template = db.fetch("templates")
-    table = db.fetch("tables")
+    template = db.fetchone("templates")
+    table = db.fetchone("tables")
     table["scores"] = table["scores"][:-1]
     lastscores = {
       "1": 0, 
@@ -1243,4 +1336,11 @@ if "__main__" == __name__:
       "9": 60, 
       "10": 0
     }
-    print table_points(template, table, lastscores)
+
+
+    #template = db.fetchone("templates", name="Arschloch")
+    #players = db.fetchall("players", fk_table=14, order="sequence")
+
+    for p in db.fetchall("players", fk_table=14, order="sequence"):
+        print p["id"], len(p["hand0"]), p["hand0"]
+        #print p["id"], len(p["hand"]), p["hand"]

@@ -3,293 +3,361 @@
  *
  * @author    Erki Suurjaak
  * @created   18.04.2020
- * @modified  03.05.2020
+ * @modified  04.05.2020
  */
 
 body {
-  background:      green;
-  color:           gold;
-  position:        absolute;
-  top:             0;
-  left:            0;
-  right:           0;
-  bottom:          0;
-  margin:          0;
-  padding:         15pt;
-  font-family:     sans-serif;
-  font-size:       1.1em;
+  background:       green;
+  color:            gold;
+  overflow:         hidden;
+  position:         absolute;
+  top:              0;
+  left:             0;
+  right:            0;
+  bottom:           0;
+  margin:           0;
+  padding:          15pt;
+  font-family:      sans-serif;
+  font-size:        1.1em;
 }
 
 button {
-  color:           white;
-  cursor:          pointer;
-  padding:         5pt 8pt;
+  background:       #474747;
+  background-image: linear-gradient(to bottom, #606060, #474747);
+  border:           1pt solid #474747;
+  color:            white;
+  cursor:           pointer;
+  padding:          5pt 8pt;
 }
 button:disabled {
-  cursor:          default;
+  color:            gray;
+  cursor:           default;
 }
 
 a, a:visited {
-  color:           white;
-  cursor:          pointer;
-  text-decoration: underline;
+  color:            white;
+  cursor:           pointer;
+  text-decoration:  underline;
 }
 
 
 input[type=text],
 input[type=password] {
-  font-size:       1em;
-  padding:         5pt 8pt;
-  width:           100pt;
+  font-size:        1em;
+  padding:          5pt 8pt;
+  width:            100pt;
 }
 input[type=number] {
-  font-size:       0.9em;
-  padding:         5pt 8pt;
-  text-align:      right;
-  width:           50pt;
+  font-size:        0.9em;
+  padding:          5pt 8pt;
+  text-align:       right;
+  width:            50pt;
 }
 textarea {
   font-family: sans-serif;
-  font-size:       1em;
-  height:          65pt;
-  padding:         5pt 8pt;
-  width:           400pt;
+  font-size:        1em;
+  height:           65pt;
+  padding:          5pt 8pt;
+  width:            400pt;
 }
 select {
-  font-size:       0.9em;
-  padding:         5pt 8pt 4pt 4pt;
-  min-width:       150pt;
+  font-size:        0.9em;
+  padding:          5pt 8pt 4pt 4pt;
+  min-width:        150pt;
 }
-th {
-  text-align:      left;
+table {
+  border-collapse:  collapse;
+  border-spacing:   0;
+}
+th, td {
+  text-align:       left;
+}
+tr, th, td {
+  margin:           0;
+  padding:          0;
 }
 
 
 
 /** Root element styling. */
 div#main {
-  margin:          0 auto;
-  height:          100%;
-  min-width:       400pt;
+  margin:           0 auto;
+  height:           100%;
+  min-width:        400pt;
+  position:         relative;
 }
 div#main > div {
-  display:         flex;
-  flex-direction:  column;
-  align-items:     center;
-  height:          100%;
+  display:          flex;
+  flex-direction:   column;
+  align-items:      center;
+  height:           100%;
 }
 body.table {
-  padding-top: 0;
+  padding-top:      0;
 }
 body.table div#main > div {
-  align-items:     stretch;
+  align-items:      stretch;
 }
 
+
+
+/** Hamburger menu button styling. */
+button.menu {
+  padding:          0 3pt 1.5pt 3pt;
+}
+#appdialog div.slot {
+  padding-bottom: 10pt;
+}
 
 
 /** Popup dialog styling. */
-div#appdialog {
-  align-items:     center;
-  bottom:          0;
-  display:         flex;
-  justify-content: center;
-  left:            0;
-  position:        absolute;
-  right:           0;
-  top:             0;
-  z-index:         10000;
+#appdialog {
+  align-items:      center;
+  bottom:           0;
+  display:          flex;
+  justify-content:  center;
+  left:             0;
+  position:         absolute;
+  right:            0;
+  top:              0;
+  z-index:          10000;
 }
-div#appdialog div.shadow {
-  background:      black;
-  height:          100%;
-  left:            0;
-  opacity:         0.5;
-  position:        absolute;
-  top:             0;
-  width:           100%;
+#appdialog div.shadow {
+  background:       black;
+  top:              -15pt;
+  left:             -15pt;
+  bottom:           -15pt;
+  right:            -15pt;
+  opacity:          0.5;
+  position:         absolute;
 }
-div#appdialog div.dialog {
-  background:      white;
-  color:           black;
-  border:          1px solid #5C5C5C;
-  box-shadow:      0 5px 15px rgba(0, 0, 0, 0.5);
-  display:         flex;
-  flex-direction:  column;
-  justify-content: space-between;
-  max-width:       400px;
-  opacity:         1;
-  text-align:      center;
-  z-index:         10001;
+#appdialog div.dialog {
+  background:       white;
+  color:            black;
+  border:           1px solid #5C5C5C;
+  box-shadow:       0 5px 15px rgba(0, 0, 0, 0.5);
+  display:          flex;
+  flex-direction:   column;
+  justify-content:  space-between;
+  max-width:        400px;
+  opacity:          1;
+  padding:          0 10pt;
+  text-align:       center;
+  z-index:          10001;
 }
-div#appdialog div.content {
-  max-height:      400px;
-  overflow:        auto;
-  padding:         20px 20px 15px 20px;
-  white-space:     pre-line;
+#appdialog div.content {
+  max-height:       400px;
+  overflow:         auto;
+  padding:          20px 20px 15px 20px;
+  white-space:      pre-line;
 }
-div#appdialog div.buttons {
-  padding:         0px 20px 20px 20px;
-  white-space:     nowrap;
+#appdialog div.buttons {
+  padding:          0px 20px 20px 20px;
+  white-space:      nowrap;
 }
 
 
 
 /** Index page styling. */
-div.template_index > div.controls {
-  position:        absolute;
-  bottom:          0;
-  right:           0;
-  padding:         0 10pt 10pt 0;
-  width:           120pt;
-  display:         flex;
-  flex-direction:  column;
+#index > div.controls {
+  position:         absolute;
+  bottom:           0;
+  right:            0;
+  width:            120pt;
+  display:          flex;
+  flex-direction:   column;
 }
-div.template_index table.tables {
-  min-width:       400pt;
+#index table.tables {
+  min-width:        400pt;
 }
-div.template_index table.tables th:first-child,
-div.template_index table.tables td:first-child {
-  min-width:       200pt;
+#index table.tables th:first-child,
+#index table.tables td:first-child {
+  min-width:        200pt;
 }
-div.template_index table.tables th:last-child,
-div.template_index table.tables td:last-child {
-  text-align:      right;
+#index table.tables th:last-child,
+#index table.tables td:last-child {
+  text-align:       right;
 }
-div.template_index table.new {
-  text-align: left;
+#index table.new {
+  text-align:       left;
 }
-
-
 
 
 /** Table page styling. */
-div.template_table div.table {
-  height:          100%;
-  position:        relative;
+#table div.table {
+  height:           100%;
+  position:         relative;
 }
-div.template_table > div.controls {
-  position:        absolute;
-  bottom:          0;
-  right:           0;
-  padding:         0 10pt 10pt 0;
-  width:           80pt;
-  display:         flex;
-  flex-direction:  column;
+#table > div.controls {
+  position:         absolute;
+  bottom:           0;
+  right:            0;
+  width:            100pt;
+  display:          flex;
+  flex-direction:   column;
 }
-div.template_table a {
-  font-size:       0.8em;
+#table a {
+  font-size:        0.8em;
 }
 
 
 
 /** Player areas styling. */
 body.table div.table div.player {
-  position:        absolute;
-  text-align:      center;
-  width:           200pt;
+  position:         absolute;
+  text-align:       center;
+  width:            200pt;
 }
+body.table div.table div.player.pos1of1,
+body.table div.table div.player.pos2of2,
+body.table div.table div.player.pos3of3,
+body.table div.table div.player.pos4of4,
+body.table div.table div.player.pos5of5,
+body.table div.table div.player.pos6of6,
+body.table div.table div.player.pos7of7,
+body.table div.table div.player.pos8of8,
 body.table div.table div.player.me {
-  bottom:          0;
-  left:            calc(50% - 100pt);
+  bottom:           0;
+  left:             0;
+  width:            100%;
 }
-body.table div.table div.player.pos1of2 {
-  top:             0;
-  left:            calc(50% - 100pt);
+body.table div.table div.player.pos1of5,
+body.table div.table div.player.pos1of6,
+body.table div.table div.player.pos1of7,
+body.table div.table div.player.pos1of8 {
+  top:              calc(50% + 100pt);
+  left:             0;
+  text-align:       left;
 }
-body.table div.table div.player.pos2of2 {
-  bottom:          0;
-  left:            calc(50% - 100pt);
+body.table div.table div.player.pos1of4,
+body.table div.table div.player.pos2of7,
+body.table div.table div.player.pos2of8 {
+  top:              calc(50% - 30pt);
+  left:             0;
+  text-align:       left;
 }
-body.table div.table div.player.pos1of3 {
-  top:             50%;
-  left:            0;
-  text-align:      left;
+body.table div.table div.player.pos1of3,
+body.table div.table div.player.pos2of5,
+body.table div.table div.player.pos3of6,
+body.table div.table div.player.pos3of7,
+body.table div.table div.player.pos3of8 {
+  top:              calc(50% - 165pt);
+  left:             0;
+  text-align:       left;
 }
-body.table div.table div.player.pos2of3 {
-  top:             50%;
-  right:           0;
-  text-align:      right;
+body.table div.table div.player.pos1of2,
+body.table div.table div.player.pos2of4,
+body.table div.table div.player.pos3of6,
+body.table div.table div.player.pos4of8 {
+  top:              0;
+  left:             0;
+  width:            100%;
 }
-body.table div.table div.player.pos3of3 {
-  bottom:          0;
-  left:            calc(50% - 100pt);
+body.table div.table div.player.pos2of3,
+body.table div.table div.player.pos3of5,
+body.table div.table div.player.pos4of6,
+body.table div.table div.player.pos5of7,
+body.table div.table div.player.pos6of8 {
+  top:              calc(50% - 165pt);
+  right:            0;
+  text-align:       right;
 }
-body.table div.table div.player.pos1of4 {
-  top:             50%;
-  left:            0;
-  text-align:      left;
+body.table div.table div.player.pos3of4,
+body.table div.table div.player.pos5of7,
+body.table div.table div.player.pos6of8 {
+  top:              calc(50% - 30pt);
+  right:            0;
+  text-align:       right;
 }
-body.table div.table div.player.pos2of4 {
-  top:             0;
-  left:            calc(50% - 100pt);
-}
-body.table div.table div.player.pos3of4 {
-  top:             50%;
-  right:           0;
-  text-align:      right;
-}
-body.table div.table div.player.pos4of4 {
-  bottom:          0;
-  left:            calc(50% - 100pt);
+body.table div.table div.player.pos4of5,
+body.table div.table div.player.pos5of6,
+body.table div.table div.player.pos6of7,
+body.table div.table div.player.pos7of8 {
+  top:              calc(50% + 100pt);
+  right:            0;
+  text-align:       right;
 }
 
 
 div.hand {
-  position:        relative;
+  position:         relative;
 }
 
 div.player div.name.turn {
-  font-weight:     bold;
-  text-decoration: underline;
+  font-weight:      bold;
+}
+div.player div.name.turn::after {
+  content:          " ●"; /* Filled circle */
 }
 
 div.table div.player.me div.cards button.look {
-  position:        absolute;
-  width:           80pt;
-  height:          30pt;
-  left:            calc(50% - 40pt);
-  top:             calc(50% - 7pt);
+  position:         absolute;
+  width:            80pt;
+  height:           30pt;
+  left:             calc(50% - 40pt);
+  top:              calc(50% - 7pt);
 }
 
 
 div.cards {
-  display:         flex;
-  justify-content: center;
-  height:          45pt;
+  display:          flex;
+  justify-content:  center;
+  height:           45pt;
 }
 div.table div.player.pos1of3 div.cards,
-div.table div.player.pos1of4 div.cards {
-  justify-content: flex-start;
+div.table div.player.pos1of4 div.cards,
+div.table div.player.pos1of5 div.cards,
+div.table div.player.pos2of5 div.cards,
+div.table div.player.pos1of6 div.cards,
+div.table div.player.pos2of6 div.cards,
+div.table div.player.pos1of7 div.cards,
+div.table div.player.pos2of7 div.cards,
+div.table div.player.pos3of7 div.cards,
+div.table div.player.pos1of8 div.cards,
+div.table div.player.pos2of8 div.cards,
+div.table div.player.pos3of8 div.cards {
+  justify-content:  flex-start;
 }
 
 div.table div.player.pos2of3 div.cards,
-div.table div.player.pos3of4 div.cards {
-  justify-content: flex-end;
+div.table div.player.pos3of4 div.cards,
+div.table div.player.pos3of5 div.cards,
+div.table div.player.pos4of5 div.cards,
+div.table div.player.pos4of6 div.cards,
+div.table div.player.pos5of6 div.cards,
+div.table div.player.pos4of7 div.cards,
+div.table div.player.pos5of7 div.cards,
+div.table div.player.pos6of7 div.cards,
+div.table div.player.pos5of8 div.cards,
+div.table div.player.pos6of8 div.cards,
+div.table div.player.pos7of8 div.cards {
+  justify-content:  flex-end;
 }
+
 
 
 /** Card styling. */
 div.card {
-  background:      white;
-  border-radius:   5pt;
-  position:        relative;
-  width:           29pt;
-  height:          46pt;
+  background:       white;
+  border-radius:    5pt;
+  position:         relative;
+  width:            29pt;
+  height:           46pt;
 }
 span.card {
-  color:           black;
-  display:         inline-block;
-  font-family:     "DejaVu Sans Condensed";
-  font-size:       40pt;
+  color:            black;
+  display:          inline-block;
+  font-family:      "DejaVu Sans Condensed";
+  font-size:        40pt;
 }
 div.card span.card {
-  position:        relative;
-  left:            -4pt;
-  top:             -0.8pt;
+  position:         relative;
+  left:             -3.8pt;
+  top:              -0.8pt;
 }
 
 *[draggable=true] span.card {
-  cursor:          pointer;
+  cursor:           pointer;
 }
 
 span.card.diamonds { color: red; }
@@ -300,213 +368,509 @@ span.card.back     { color: blue; }
 
 /** Table center styling. */
 div.table div.tabletop {
-  background:    green;
-  border:        1pt solid white;
-  border-radius: 2pt;
-  padding:       5pt;
-  position:      absolute;
-  top:           calc(50% - 150pt);
-  left:          calc(50% - 150pt);
-  width:         300pt;
-  height:        300pt;
-  z-index:       1;
+  background:       green;
+  border:           1pt solid white;
+  border-radius:    2pt;
+  color:            white;
+  padding:          5pt;
+  position:         absolute;
+  top:              calc(50% - 150pt);
+  left:             calc(50% - 150pt);
+  width:            300pt;
+  height:           300pt;
+  overflow:         hidden;
+  z-index:          1;
 }
+
 
 
 /** Moves styling. */
 div.table div.moves div.trick {
-  max-height:     250pt;
-  max-width:      150pt;
-  overflow-y:     auto;
+  height:          250pt;
+  max-width:       150pt;
+  overflow-y:      auto;
+}
+div.table div.moves div.trick.over {
+  opacity:         0.5;
+}
+div.table div.tabletop.ended div.moves div.trick {
+  opacity:         0.2;
 }
 div.table div.moves div.trick div.cards {
   justify-content: flex-start;
 }
 div.table div.moves > div.cards {
-  position:       absolute;
-  bottom:         5pt;
-  left:           45%;
+  position:        absolute;
+  bottom:          5pt;
+  left:            calc(50% - 100pt);
+  width:           200pt;
 }
 div.table div.moves div.controls {
-  position:       absolute;
-  bottom:         0;
-  right:          0;
-  padding:        5pt;
-}
-
-
-
-/** Scorecard styling. */
-div.table div.scores {
-  border:          1pt solid white;
-  border-radius:   2pt;
-  font-size:       0.7em;
-  max-height:      100pt;
-  overflow-y:      auto;
-  position:        absolute;
-  top:             -30pt;
-  right:           0;
-}
-div.table div.scores th.index ,
-div.table div.scores td.index {
-  font-weight:     bold;
-  opacity:         0.7;
-  text-align:      right;
-}
-div.table div.scores th.bid,
-div.table div.scores td.bid {
-  font-weight:     normal;
-  opacity:         0.7;
-  text-align:      right;
-}
-div.table div.scores td {
-  text-align:      right;
-  white-space:     nowrap;
-}
-
-
-
-/** Tricks stack styling. */
-div.table div.player div.tricks {
-  display:         flex;
-  justify-content: flex-end;
-  position:        relative;
-  top:             10pt;
-}
-div.table div.player.me div.tricks {
-  position:        absolute;
-  top:             18pt;
-  left:            -100pt;
-}
-div.table div.player div.tricks div.card {
-  cursor:          pointer;
-}
-div.template_table div.dialog div.html {
-  padding-bottom:  10pt;
-}
-div.table div.player.pos1of3 div.tricks,
-div.table div.player.pos1of4 div.tricks {
-  justify-content: flex-start;
-}
-
-div.table div.player.pos2of3 div.tricks,
-div.table div.player.pos3of4 div.tricks {
-  justify-content: flex-end;
-  right:           5pt;
-}
-
-
-
-
-
-/** Bidding and distribution styling. */
-div.table div.bidding,
-div.table div.distribute {
-}
-div.table div.bidding div.bids table {
-  border-collapse: collapse;
-  border-spacing:  0;
-}
-div.table div.bidding div.bids table tr,
-div.table div.bidding div.bids table td {
-  margin:          0;
-  padding:         0;
-}
-div.table div.bidding div.bids table td:first-child {
-  padding-right:   2pt;
-}
-div.table div.bidding select.suite {
-  min-width:       auto;
-}
-div.table div.distribute button.give {
-  position:        absolute;
-  top:             calc(50% - 15pt);
-  left:            calc(50% - 25pt);
-  width:           50pt;
-  height:          30pt;
-}
-div.table div.bidding div.controls {
   position:        absolute;
   bottom:          0;
   right:           0;
   padding:         5pt;
 }
+div.tabletop div.moves div.trick div.player {
+  display:         flex;
+  justify-content: center;
+  width:           200pt;
+}
+div.tabletop div.moves div.trick div.player.pos1of5,
+div.tabletop div.moves div.trick div.player.pos1of6,
+div.tabletop div.moves div.trick div.player.pos1of7,
+div.tabletop div.moves div.trick div.player.pos1of8 {
+  bottom:          10%;
+  left:            calc(25% - 100pt);
+}
+div.tabletop div.moves div.trick div.player.pos1of4,
+div.tabletop div.moves div.trick div.player.pos2of7,
+div.tabletop div.moves div.trick div.player.pos2of8 {
+  top:             calc(50% - 20pt);
+  left:            calc(25% - 100pt);
+}
+div.tabletop div.moves div.trick div.player.pos1of3,
+div.tabletop div.moves div.trick div.player.pos2of5,
+div.tabletop div.moves div.trick div.player.pos3of6,
+div.tabletop div.moves div.trick div.player.pos3of7,
+div.tabletop div.moves div.trick div.player.pos3of8 {
+  top:             10%;
+  left:            calc(25% - 100pt);
+}
+div.tabletop div.moves div.trick div.player.pos2of4,
+div.tabletop div.moves div.trick div.player.pos3of6,
+div.tabletop div.moves div.trick div.player.pos4of8 {
+  top:             10%;
+  left:            calc(50% - 100pt);
+}
+div.tabletop div.moves div.trick div.player.pos2of3,
+div.tabletop div.moves div.trick div.player.pos3of5,
+div.tabletop div.moves div.trick div.player.pos4of6,
+div.tabletop div.moves div.trick div.player.pos4of7,
+div.tabletop div.moves div.trick div.player.pos5of8 {
+  top:             10%;
+  left:            calc(75% - 100pt);
+}
+div.tabletop div.moves div.trick div.player.pos3of4,
+div.tabletop div.moves div.trick div.player.pos5of7,
+div.tabletop div.moves div.trick div.player.pos6of8 {
+  top:             calc(50% - 20pt);
+  left:            calc(75% - 100pt);
+}
+div.tabletop div.moves div.trick div.player.pos4of5,
+div.tabletop div.moves div.trick div.player.pos5of6,
+div.tabletop div.moves div.trick div.player.pos6of7,
+div.tabletop div.moves div.trick div.player.pos7of8 {
+  bottom:          10%;
+  left:            calc(75% - 100pt);
+}
+div.tabletop div.moves div.trick div.player.pos1of1,
+div.tabletop div.moves div.trick div.player.pos2of2,
+div.tabletop div.moves div.trick div.player.pos3of3,
+div.tabletop div.moves div.trick div.player.pos4of4,
+div.tabletop div.moves div.trick div.player.pos5of5,
+div.tabletop div.moves div.trick div.player.pos6of6,
+div.tabletop div.moves div.trick div.player.pos7of7,
+div.tabletop div.moves div.trick div.player.pos8of8,
+div.tabletop div.moves div.trick div.player.me {
+  bottom:          10%;
+  left:            calc(50% - 100pt);
+}
+div.special {
+  font-size:       0.8em;
+  text-align:      center;
+  width:           80pt;
+  position:        absolute;
+  top:             50pt;
+  left:            calc(50% - 40pt);
+}
+div.tabletop div.moves div.trick div.player.pos1of5 div.cards:empty + div.special,
+div.tabletop div.moves div.trick div.player.pos1of6 div.cards:empty + div.special,
+div.tabletop div.moves div.trick div.player.pos1of7 div.cards:empty + div.special,
+div.tabletop div.moves div.trick div.player.pos1of8 div.cards:empty + div.special {
+  left:            10pt;
+  top:             unset;
+  bottom:          0;
+}
+div.tabletop div.moves div.trick div.player.pos1of3 div.cards:empty + div.special,
+div.tabletop div.moves div.trick div.player.pos1of4 div.cards:empty + div.special,
+div.tabletop div.moves div.trick div.player.pos2of7 div.cards:empty + div.special,
+div.tabletop div.moves div.trick div.player.pos2of8 div.cards:empty + div.special {
+  left:            10pt;
+  top:             calc(50% - 6pt);
+}
+div.tabletop div.moves div.trick div.player.pos2of5 div.cards:empty + div.special,
+div.tabletop div.moves div.trick div.player.pos2of6 div.cards:empty + div.special,
+div.tabletop div.moves div.trick div.player.pos3of7 div.cards:empty + div.special,
+div.tabletop div.moves div.trick div.player.pos3of8 div.cards:empty + div.special {
+  left:            10pt;
+  top:             0;
+}
+div.tabletop div.moves div.trick div.player.pos2of4 div.cards:empty + div.special,
+div.tabletop div.moves div.trick div.player.pos3of6 div.cards:empty + div.special,
+div.tabletop div.moves div.trick div.player.pos4of8 div.cards:empty + div.special {
+  top:             -10pt;
+}
+div.tabletop div.moves div.trick div.player.pos3of5 div.cards:empty + div.special,
+div.tabletop div.moves div.trick div.player.pos4of6 div.cards:empty + div.special,
+div.tabletop div.moves div.trick div.player.pos4of7 div.cards:empty + div.special,
+div.tabletop div.moves div.trick div.player.pos5of8 div.cards:empty + div.special {
+  left:            unset;
+  top:             0;
+  right:           10pt;
+}
+div.tabletop div.moves div.trick div.player.pos2of3 div.cards:empty + div.special,
+div.tabletop div.moves div.trick div.player.pos3of4 div.cards:empty + div.special,
+div.tabletop div.moves div.trick div.player.pos5of7 div.cards:empty + div.special,
+div.tabletop div.moves div.trick div.player.pos6of8 div.cards:empty + div.special {
+  left:            unset;
+  right:           10pt;
+  top:             calc(50% - 6pt);
+}
+div.tabletop div.moves div.trick div.player.pos4of5 div.cards:empty + div.special,
+div.tabletop div.moves div.trick div.player.pos5of6 div.cards:empty + div.special,
+div.tabletop div.moves div.trick div.player.pos6of7 div.cards:empty + div.special,
+div.tabletop div.moves div.trick div.player.pos7of8 div.cards:empty + div.special {
+  left:            unset;
+  top:             unset;
+  bottom:          0;
+  right:           10pt;
+}
+div.tabletop div.moves div.trick.stack div.player div.cards {
+  opacity:         0.5;
+}
+div.tabletop div.moves div.trick div.stack {
+  position:        absolute;
+  top:             calc(50% - 20pt);
+  left:            calc(50% - 100pt);
+  display:         flex;
+  justify-content: center;
+  width:           200pt;
+}
+
+
+
+/** Trick history popup styling. */
+#appdialog div.html div.move {
+  display:         inline-block;
+  position:        relative;
+}
+#appdialog div.html div.move div.special {
+  font-size:       0.8em;
+  text-align:      center;
+  width:           50pt;
+  position:        absolute;
+  bottom:          -15pt;
+  left:            calc(-50% + 12pt);
+}
+
+
+
+/** Spectators styling. */
+div.table div.spectators {
+  position:         absolute;
+  top:              70pt;
+  right:            0;
+  color:            white;
+  font-size:        0.7em;
+  max-width:        100pt;
+  max-height:       50pt;
+  overflow-y:       auto;
+}
+
+
+/** Scorecard styling. */
+div.table div.scores {
+  border:           1pt solid white;
+  border-radius:    1pt;
+  font-size:        0.7em;
+  max-height:       100pt;
+  overflow-y:       auto;
+  position:         absolute;
+  top:              -30pt;
+  right:            0;
+}
+div.table div.scores table {
+  border-collapse:  separate;
+}
+div.table div.scores thead tr:first-child th.index,
+div.table div.scores td.index {
+  font-weight:      bold;
+  opacity:          0.7;
+  text-align:       right;
+}
+th.bid,
+td.bid {
+  color:            gold;
+  font-weight:      normal;
+  opacity:          0.7;
+  text-align:       right;
+}
+div.table div.scores th,
+div.table div.scores td {
+  padding:          0 2pt;
+  text-align:       right;
+  white-space:      nowrap;
+}
+div.table div.scores thead tr:first-child th {
+  text-align:       left;
+}
+
+
+
+/** Tricks stack styling. */
+div.table div.player fieldset.tricks {
+  border:           1px solid white;
+  border-radius:    1pt;
+  display:          inline-block;
+  padding:          0 5pt 5pt 5pt;
+  position:         relative;
+  top:              10pt;
+}
+div.table div.player fieldset.tricks > legend {
+  color:            white;
+  font-size:        10pt;
+  text-align:       left;
+}
+div.table div.player div.tricks {
+  display:          flex;
+  justify-content:  flex-end;
+}
+div.table div.player.me fieldset.tricks {
+  position:         absolute;
+  top:              4.5pt;
+  left:             0;
+}
+div.table div.player .tricks div.card {
+  cursor:           pointer;
+}
+#table div.dialog div.html {
+  padding-bottom:   10pt;
+}
+body.table div.table div.player.pos2of4 fieldset.tricks {
+  position:         absolute;
+  left:             0;
+  top:              4.5pt;
+}
+div.table div.player.pos1of3 div.tricks,
+div.table div.player.pos1of4 div.tricks {
+  justify-content:  flex-start;
+}
+
+div.table div.player.pos2of3 div.tricks,
+div.table div.player.pos3of4 div.tricks {
+  justify-content:  flex-end;
+}
+
+
+
+/** Bidding and distribution styling. */
+div.table div.bidding div.bids table td:first-child {
+  padding-right:    2pt;
+}
+div.table div.bidding select.suite {
+  min-width:        auto;
+}
+div.table div.bidding input[type=number] {
+  font-size:        0.9em;
+  padding:          3pt;
+  width:            40pt;
+}
+div.table div.distribute button.give {
+  position:         absolute;
+  top:              calc(50% - 15pt);
+  left:             calc(50% - 25pt);
+  width:            50pt;
+  height:           30pt;
+}
+div.table div.bidding div.controls {
+  position:         absolute;
+  bottom:           0;
+  right:            0;
+  padding:          5pt;
+}
 div.table div.bidding div.bids {
-  max-height:      200pt;
-  overflow:        auto;
+  font-size:        0.8em;
+  max-height:       200pt;
+  overflow:         auto;
 }
 
 
 div.table div.distribute div.card.drop {
-   width:          27pt;
-   height:         45pt;
-   border:         1pt solid gray;
-   border-radius:  5pt;
+   border-radius:   4pt;
+   height:          45pt;
+   margin:          1pt;
+   text-align:      left;
+   width:           27pt;
+}
+div.table div.distribute div.card.drop:empty::after {
+  content:          "?";
+  font-size:        2em;
+  color:            lightgray;
+  position:         relative;
+  left:             6pt;
+  top:              8pt;
 }
 div.table div.distribute div.card.drop span.card {
 /*  margin: -1.5pt -5pt; */
 }
 div.table div.distribute div.player {
-  width:           100pt;
+  width:            100pt;
+}
+div.table div.distribute div.player.pos1of5,
+div.table div.distribute div.player.pos1of6,
+div.table div.distribute div.player.pos1of7,
+div.table div.distribute div.player.pos1of8 {
+  left:             5pt;
+  bottom:           7pt;
+}
+div.table div.distribute div.player.pos1of3,
+div.table div.distribute div.player.pos1of4,
+div.table div.distribute div.player.pos2of7,
+div.table div.distribute div.player.pos2of8 {
+  left:             5pt;
+  top:              calc(50% - 20pt);
+}
+div.table div.distribute div.player.pos2of5,
+div.table div.distribute div.player.pos2of6,
+div.table div.distribute div.player.pos3of7,
+div.table div.distribute div.player.pos3of8 {
+  left:             5pt;
+  top:              5pt;
 }
 div.table div.distribute div.player.pos1of2,
-div.table div.distribute div.player.pos2of2,
-div.table div.distribute div.player.pos3of3,
 div.table div.distribute div.player.pos2of4,
-div.table div.distribute div.player.pos4of4 {
-  left:            calc(50% - 50pt);
+div.table div.distribute div.player.pos3of6,
+div.table div.distribute div.player.pos4of8 {
+  top:              5pt;
+  left:             calc(50% - 50pt);
+}
+div.table div.distribute div.player.pos3of5,
+div.table div.distribute div.player.pos4of6,
+div.table div.distribute div.player.pos4of7,
+div.table div.distribute div.player.pos5of8 {
+  right:            5pt;
+  top:              5pt;
+}
+div.table div.distribute div.player.pos2of3,
+div.table div.distribute div.player.pos3of4,
+div.table div.distribute div.player.pos4of6,
+div.table div.distribute div.player.pos6of8 {
+  right:            5pt;
+  top:              calc(50% - 20pt);
+}
+div.table div.distribute div.player.pos4of5,
+div.table div.distribute div.player.pos5of6,
+div.table div.distribute div.player.pos6of7,
+div.table div.distribute div.player.pos7of8 {
+  right:            5pt;
+  bottom:           7pt;
 }
 
 
 
-/** Talon styling. */
-div.table div.talon {
-  position:        absolute;
-  width:           50pt;
-  height:          70pt;
-  top:             5pt;
-  right:           5pt;
-}
-div.table div.talon div.cards {
-  justify-content: flex-end;
-}
 
-
-
-/** Game options styling. */
-div.table div.opts {
-  position:        absolute;
-  top:             5pt;
-  right:           5pt;
-  text-align:      right;
+/** Talon and game options styling.  */
+div.tabletop div.extra {
+  position:         absolute;
+  top:              5pt;
+  right:            5pt;
 }
-div.table div.opts div.trump > div {
-  border:          2pt solid black;
-  border-radius:   5pt;
-  background:      white;
-  width:           25pt;
-  height:          43pt;
-  position:        absolute;
-  right:           0;
+div.table div.extra div.talon div.cards {
+  justify-content:  flex-end;
 }
-div.table div.opts div.trump span.card {
-  position:        relative;
-  left:            -2pt;
-  top:             3pt;
-  font-size:       35pt;
+div.tabletop div.extra div.opts {
+  font-size:        0.8em;
+  text-align:       right;
+}
+div.tabletop div.extra div.opts div.trump > div {
+  border:           2pt solid black;
+  border-radius:    5pt;
+  background:       white;
+  width:            25pt;
+  height:           43pt;
+  position:         absolute;
+  right:            0;
+}
+div.tabletop div.extra div.opts div.trump > div.diamonds,
+div.tabletop div.extra div.opts div.trump > div.hearts {
+  border-color:     red;
+}
+div.tabletop div.extra div.opts div.trump span.card {
+  position:         relative;
+  left:             -2pt;
+  top:              3pt;
+  font-size:        35pt;
 }
 
 
+/** Game over section styling */
+div.tabletop div.gameover {
+  position:         absolute;
+  top:              5pt;
+  left:             5pt;
+}
+div.tabletop div.gameover table.score {
+  font-size:        0.8em;
+}
+div.tabletop div.gameover table.score .bid {
+  text-align:       left;
+}
 
+
+
+/** Font supporting Unicode cards. */
 @font-face {
   font-family: "DejaVu Sans Condensed";
   src: url("media/DejaVuSansCondensed.eot"); /* IE9 Compat Modes */
   src: url("media/DejaVuSansCondensed.eot?#iefix") format("embedded-opentype"), /* IE6-IE8 */
        url("media/DejaVuSansCondensed.otf")        format("opentype"), /* Open Type Font */
-       url("media/DejaVuSansCondensed.svg")        format("svg"), /* Legacy iOS */
+       url("media/DejaVuSansCondensed.svg")        format("svg"),      /* Legacy iOS */
        url("media/DejaVuSansCondensed.ttf")        format("truetype"), /* Safari, Android, iOS */
-       url("media/DejaVuSansCondensed.woff")       format("woff"), /* Modern Browsers */
-       url("media/DejaVuSansCondensed.woff2")      format("woff2"); /* Modern Browsers */
+       url("media/DejaVuSansCondensed.woff")       format("woff"),     /* Modern Browsers */
+       url("media/DejaVuSansCondensed.woff2")      format("woff2");    /* Modern Browsers */
   font-weight: normal;
   font-style:  normal;
+}
+
+
+/** Header and footer styling. */
+#header,
+#footer {
+  position:         absolute;
+  left:             15pt;
+  right:            15pt;
+  top:              calc(100% - 15pt);
+  bottom:           0;
+  font-size:        0.7em;
+  z-index:          1;
+}
+#header {
+  top:              1pt;
+  bottom:           unset;
+  height:           15pt;
+}
+#header > div,
+#footer > div {
+  display:          flex;
+  align-items:      center;
+  justify-content:  flex-end;
+  height:           100%;
+}
+#header > div {
+  justify-content:  flex-start;
+}
+#footer > div > * + * {
+  padding-left:     13pt;
+}
+#footer > div > * > * + * {
+  padding-left:     5pt;
+}
+#header a,
+#footer a {
+  text-decoration:  none;
+}
+#header a:hover,
+#footer a:hover {
+  text-decoration:  underline;
 }

@@ -4,7 +4,7 @@ Utility functions and classes.
 
 @author      Erki Suurjaak
 @created     04.02.2015
-@modified    19.04.2020
+@modified    07.05.2020
 ------------------------------------------------------------------------------
 """
 import ast
@@ -12,6 +12,7 @@ import base64
 import collections
 import ConfigParser as configparser
 import datetime
+import decimal
 import difflib
 import imghdr
 import io
@@ -91,7 +92,9 @@ def json_dumps(data, indent=2, sort_keys=True):
         if hasattr(x, "tzinfo") and x.tzinfo is None: x = pytz.utc.localize(x)
         return x.isoformat()
     binencoder = lambda x: isinstance(x, buffer) and encode_b64_mime(x)
-    encoder = lambda x: dateencoder(x) or binencoder(x)
+    decencoder = lambda x: isinstance(x, decimal.Decimal) and \
+                           (float(x) if x.as_tuple().exponent else int(x))
+    encoder = lambda x: dateencoder(x) or binencoder(x) or decencoder(x)
     return json.dumps(data, default=encoder, indent=indent, sort_keys=sort_keys)
 
 
@@ -162,6 +165,7 @@ def parse_datetime(s):
     """
     Tries to parse string as ISO8601 datetime, returns input on error.
     Supports "YYYY-MM-DD[ T]HH:MM:SS(.micros)?(Z|[+-]HH:MM)?".
+    All returned datetimes are timezone-aware, falling back to UTC.
     """
     if len(s) < 18: return s
     rgx = r"^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(\.\d+)?(([+-]\d{2}:?\d{2})|Z)?$"

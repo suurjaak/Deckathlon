@@ -1,0 +1,339 @@
+msgid  "Username"
+msgstr "Kasutajanimi"
+
+msgid  "Password"
+msgstr "Parool"
+
+msgid  "Login"
+msgstr "Sisene"
+
+msgid  "Register"
+msgstr "Registreeru"
+
+msgid  "Back"
+msgstr "Tagasi"
+
+msgid  "Logging in.."
+msgstr "Sisenen.."
+
+msgid  "Login successful, loading site.."
+msgstr "Parool õige, avan saiti.."
+
+msgid  "Invalid username or password."
+msgstr "Vale kasutajanimi või parool."
+
+msgid  "Error contacting login server."
+msgstr "Viga serveriga ühendumisel."
+
+msgid  "Registration successful, loading site.."
+msgstr "Registreerumine tehtud, avan saiti.."
+
+msgid  "Error registering account."
+msgstr "Viga konto registreerimisel."
+
+msgid  "Registering..."
+msgstr "Registreerin kontot.."
+
+msgid  "Username exists"
+msgstr "Kasutajanimi võetud"
+
+msgid  "Required data missing"
+msgstr "Vigane avaldus"
+
+msgid  "Table"
+msgstr "Laud"
+
+msgid  "Game"
+msgstr "Mäng"
+
+msgid  "Host"
+msgstr "Omanik"
+
+msgid  "Players"
+msgstr "Mängijad"
+
+msgid  "New game table"
+msgstr "Tee uus laud"
+
+msgid  "Join private table"
+msgstr "Liitu privaatlauaga"
+
+msgid  "Table short ID"
+msgstr "Laua identifikaator"
+
+msgid  "Table name"
+msgstr "Laua nimi"
+
+msgid  "Game"
+msgstr "Mäng"
+
+msgid  "Public"
+msgstr "Kõigile nähtav"
+
+msgid  "Index"
+msgstr "Nimekiri"
+
+msgid  "Log out?"
+msgstr "Logi välja?"
+
+msgid  "Join table"
+msgstr "Liitu lauaga"
+
+msgid  "Table: {0} (by {1}, playing {2})"
+msgstr "Laud: {0} (omanik {1}, mänguks {2})"
+
+msgid  "Open table settings"
+msgstr "Ava laua sätted"
+
+msgid  "Settings"
+msgstr "Sätted"
+
+msgid  "Game series #{0}"
+msgstr "Mänguseeria #{0}"
+
+msgid  "Spectators"
+msgstr "Pealtvaatajad"
+
+msgid  "Player #{0}"
+msgstr "Mängija #{0}"
+
+msgid  "Give"
+msgstr "Anna"
+
+msgid  "Bidding"
+msgstr "Pakkumine"
+
+msgid  "Bid"
+msgstr "Paku"
+
+msgid  "Deal cards"
+msgstr "Jaga kaardid"
+
+msgid  "Start new game on table"
+msgstr "Alusta laual järgmist mängu"
+
+msgid  "Join game"
+msgstr "Liitu mänguga"
+
+msgid  "Join game?"
+msgstr "Liitu mänguga?"
+
+msgid  "End game"
+msgstr "Katkesta mäng"
+
+msgid  "End game?"
+msgstr "Katkesta mäng?"
+
+msgid  "Leave game"
+msgstr "Lahku lauast"
+
+msgid  "Leave game?"
+msgstr "Lahku lauast?"
+
+msgid  "Reset game"
+msgstr "Alusta mängu otsast peale"
+
+msgid  "Reset game series"
+msgstr "Alusta uut mänguseeriat"
+
+msgid  "Reset game series and restart?"
+msgstr "Alusta uut mänguseeriat?"
+
+msgid  "Are you really sure you want to reset the game series? This will lose the current scores."
+msgstr "Oled sa ikka päris kindel, et tahad alustada uut seeriat? Sellega kaob praegune punktide seis."
+
+msgid  "Back to index"
+msgstr "Tagasi nimekirja"
+
+msgid  "Log out {0}"
+msgstr "Logi välja: {0}"
+
+msgid  "Look at cards"
+msgstr "Vaata kaarte"
+
+msgid  "Blind"
+msgstr "Pime"
+
+msgid  "blind"
+msgstr "pime"
+
+msgid  "Crawl"
+msgstr "Rooma"
+
+msgid  "Make facedown move"
+msgstr "Käi kaart tagurpidi"
+
+msgid  "Make {0}"
+msgstr "Tee {0}"
+
+msgid  "wheels"
+msgstr "rattad"
+
+msgid  "Play"
+msgstr "Käi"
+
+msgid  "Tricks"
+msgstr "Tihid"
+
+msgid  "Game over"
+msgstr "Mäng läbi"
+
+msgid  "Show trick #{0}"
+msgstr "Vaata tihi #{0}"
+
+msgid  "Show last trick"
+msgstr "Vaata viimast tihi"
+
+msgid  "Player '{0}' last trick:"
+msgstr "Mängija '{0}' viimane tihi"
+
+msgid  "Player '{0}' trick #{1}:"
+msgstr "Mängija '{0}' tihi #{1}:"
+
+msgid  "Kick out"
+msgstr "Viska lauast välja"
+
+msgid  "Kick player '{}' out of game?"
+msgstr "Löö mängija '{}' lauast minema?"
+
+msgid  "Starting game.."
+msgstr "Alustan mängu.."
+
+msgid  "Cancel"
+msgstr "Loobu"
+
+msgid  "Template not found"
+msgstr "Mängumalli ei leitud"
+
+msgid  "Forbidden"
+msgstr "Pole lubatud"
+
+msgid  "Not found"
+msgstr "Ei leitud"
+
+msgid  "Cannot join game in progress"
+msgstr "Poolelioleva mänguga ei saa liituda"
+
+msgid  "Table not found"
+msgstr "Lauda ei leitud"
+
+msgid  "Host cannot leave"
+msgstr "Omanik ei saa lahkuda"
+
+msgid  "Unknown action"
+msgstr "Tundmatu käik"
+
+msgid  "Not enough players"
+msgstr "Pole piisavalt mängijaid"
+
+msgid  "Game not completed"
+msgstr "Mäng pole lõppenud"
+
+msgid  "Not in bidding phase"
+msgstr "Pakkumine läbi"
+
+msgid  "Not player''s turn"
+msgstr "Pole mängija kord"
+
+msgid  "Bid missing data"
+msgstr "Puudulik pakkumine"
+
+msgid  "Bid too small"
+msgstr "Pakkumine liiga madal"
+
+msgid  "Bid too high"
+msgstr "Pakkumine liiga kõrge"
+
+msgid  "Bid too small"
+msgstr "Pakkumine liiga madal"
+
+msgid  "Bid invalid number"
+msgstr "Pakkumine vigase sammuga"
+
+msgid  "No longer blind"
+msgstr "Pole enam pime"
+
+msgid  "Bid needs to be higher than previous"
+msgstr "Pakkumine peab olema kõrgem eelmisest"
+
+msgid  "Cancel"
+msgstr "Loobu"
+
+msgid  "Not in distributing phase"
+msgstr "Jagamine läbi"
+
+msgid  "Distribution missing data"
+msgstr "Puudulik jagamine"
+
+msgid  "Unknown players"
+msgstr "Tundmatud mängijad"
+
+msgid  "Wrong amount being distributed"
+msgstr "Vale arv jagatud kaarte"
+
+msgid  "Game not underway"
+msgstr "Mäng ei käi"
+
+msgid  "Not player's turn"
+msgstr "Pole mängija kord"
+
+msgid  "Move missing data"
+msgstr "Vigane käik"
+
+msgid  "Can not pass"
+msgstr "Ei saa passida"
+
+msgid  "Cannot crawl if you have a top card"
+msgstr "Ei saa roomata, kui on kõige tugevamat kaarti"
+
+msgid  "Cannot make {0} this round"
+msgstr "Selles raundis ei saa teha {0}"
+
+msgid  "Not meeting {0} condition: {1}"
+msgstr "Ei täida {0} tingimust: {1}"
+
+msgid  "Cannot make crawl move this round"
+msgstr "Selles raundis ei saa roomata"
+
+msgid  "Cannot make trump in game"
+msgstr "Selles mängus ei saa trumpi teha"
+
+msgid  "Cannot make trump this round"
+msgstr "Selles raundis ei saa teha trumpi"
+
+msgid  "Must give top cards"
+msgstr "Peab andma kõige tugevamaid kaarte"
+
+msgid  "Must follow suite"
+msgstr "Peab käima masti"
+
+msgid  "Must play at least same amount"
+msgstr "Peab käima vähemalt sama palju"
+
+msgid  "Must play at least same level"
+msgstr "Peab käima vähemalt sama tugevaid"
+
+msgid  "Must play cards of one level"
+msgstr "Peab käima ühte tüüpi"
+
+msgid  "Must play cards of one suite"
+msgstr "Peab käima ühte masti"
+
+msgid  "No cards to make {0}"
+msgstr "No cards to make {0}"
+
+msgid  "No cards to make trump"
+msgstr "Pole kaarte trumbi tegemiseks"
+
+msgid  "No such cards"
+msgstr "Pole selliseid kaarte"
+
+msgid  "Not {0} card"
+msgstr "Pole {0} kaart"
+
+msgid  "Not the right amount of cards"
+msgstr "Vale arv kaarte"
+
+msgid  "Not trump card"
+msgstr "Pole trumbi kaart"
+

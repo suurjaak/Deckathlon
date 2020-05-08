@@ -2,13 +2,14 @@
 Index page template.
 
 @param   data            {datatype: [rows], }
+@param   langs           [code, ]
 @param   poll            ?{url: "poll", interval: millis}
 @param   schema          {url, datatype: {url, key, fields: {name: {name, key, fk, fklabel}, }}, }
 @param   translations    simple flat translations dictionary for current language
 
 @author      Erki Suurjaak
 @created     18.04.2020
-@modified    02.05.2020
+@modified    05.05.2020
 %"""
 %from deckathlon import conf
 %from deckathlon.lib import util
@@ -31,20 +32,26 @@ Index page template.
 <div id="main">
   <index ref="root"></index>
 </div>
+<div id="footer">
+  <page_footer ref="footer"></page_footer>
+</div>
 
 
 <script type="text/javascript">
 
-  var translations = Util.jsonLoad('{{! util.json_dumps(translations, indent=None) }}');
-  var typedata     = Util.jsonLoad('{{! util.json_dumps(data, indent=None) }}');
-  var typeschema   = Util.jsonLoad('{{! util.json_dumps(schema, indent=None) }}');
+  var languages    = Util.jsonLoad("{{! util.json_dumps(langs, indent=None).replace('"', r'\"') }}");
+  var translations = Util.jsonLoad("{{! util.json_dumps(translations, indent=None).replace('"', r'\"') }}");
+  var typedata     = Util.jsonLoad("{{! util.json_dumps(data, indent=None).replace('"', r'\"') }}");
+  var typeschema   = Util.jsonLoad("{{! util.json_dumps(schema, indent=None).replace('"', r'\"') }}");
 
   Locale.init(translations);
   Data.configure({schema: typeschema, data: typedata, rootURL: (typedata.settings || {}).dataURL});
 
   window.addEventListener("load", function() {
-    vm = new Vue({el: "#main"});
+    vm  = new Vue({el: "#main"});
+    vmf = new Vue({el: "#footer", data: {langs: languages}});
 %if get("poll"):
+
     Data.poll("{{! poll["url"] }}", {{ poll["interval"] }}, new function() {
       var dt_from = null;
       return function() {

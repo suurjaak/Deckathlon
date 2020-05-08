@@ -4,7 +4,7 @@ Web frontend entrypoint. Can run as stand-alone server or under Apache et al.
 
 @author      Erki Suurjaak
 @created     18.04.2020
-@modified    03.05.2020
+@modified    05.05.2020
 """
 import cgi
 import datetime
@@ -14,6 +14,7 @@ import logging
 import os
 import sys
 import urllib2
+
 import beaker.middleware
 import bottle
 from bottle import hook, request, response, route
@@ -28,12 +29,11 @@ logger = logging.getLogger(__name__)
 
 
 def login_required(func):
-    """Decorator that requires login or returns HTTP 401."""
+    """Decorator that requires login or redirects to login."""
     def wrapper(*args, **kwargs):
         if request.session.get("userid"):
             return func(*args, **kwargs)
-        request.session.delete()
-        return bottle.abort(httplib.UNAUTHORIZED, "Access denied.")
+        return bottle.redirect(request.app.get_url("/"))
     return wrapper
 
 
@@ -58,6 +58,7 @@ def content_type(mime):
 @hook("before_request")
 def before_request():
     """Set up convenience variables, remove trailing slashes from route."""
+    if not request: return
     request.environ["PATH_INFO"] = request.environ["PATH_INFO"].rstrip("/")
     request.session = request.environ["beaker.session"]
 
@@ -75,7 +76,9 @@ def server_static(filepath):
 def logout():
     """Handler for logging out, redirects to root URL."""
     logger.info("Logging out %s.", request.session.get("username"))
-    request.session.delete()
+    lang = request.session.get("lang")
+    request.session.clear()
+    if lang: request.session.update(lang=lang)
     return bottle.redirect(request.app.get_url("/"))
 
 
@@ -223,7 +226,10 @@ def api_endpoints():
 @login_required
 def table(shortid):
     """Handler for showing a table page."""
-    translations = translate.get_all()
+    lang = request.session.get("lang", conf.DefaultLanguage)
+    if lang not in conf.Languages: lang = conf.DefaultLanguage
+    langs = conf.Languages
+    translations = translate.get_all(lang)
     schema = conf.DbSchema
 
     userid = request.session.get("userid")
@@ -232,6 +238,8 @@ def table(shortid):
     except Exception as e:
         logger.exception("Error loading table data.")
         error, status = str(e), httplib.INTERNAL_SERVER_ERROR
+    if httplib.NOT_FOUND == status:
+        return bottle.redirect(request.app.get_url("/"))
     if error:
         raise bottle.HTTPError(status, error)
 
@@ -239,10 +247,23 @@ def table(shortid):
     return bottle.template("table.tpl", locals())
 
 
+@route("/<lang>/table/<shortid>", method="GET")
+@login_required
+def table_lang(lang, shortid):
+    """Handler that sets session language and redirects to table page."""
+    if lang not in conf.Languages: lang = conf.DefaultLanguage
+    request.session.update(lang=lang)
+    return bottle.redirect(request.app.get_url("/table/<shortid>", shortid=shortid))
+
+
 @route("/")
 def index():
     """Handler for showing the index or login page."""
-    translations = translate.get_all()
+    lang = request.session.get("lang", conf.DefaultLanguage)
+    if lang not in conf.Languages: lang = conf.DefaultLanguage
+    langs = conf.Languages
+    request.session.update(lang=lang)
+    translations = translate.get_all(lang)
     schema = conf.DbSchema
     root = request.app.get_url("/")
 
@@ -254,6 +275,14 @@ def index():
     data, e, s = model.pagedata(request, "index", userid)
     poll = {"url": "poll", "interval": conf.PollInterval}
     return bottle.template("index.tpl", locals())
+
+
+@route("/<lang>")
+def index_lang(lang):
+    """Handler that sets session language and redirects to root."""
+    if lang not in conf.Languages: lang = conf.DefaultLanguage
+    request.session.update(lang=lang)
+    return bottle.redirect(request.app.get_url("/"))
 
 
 def unsupported(url):
@@ -276,12 +305,13 @@ def init():
     util.init_logger(conf.LogLevel, conf.LogPath, conf.ErrorLogPath,
                      conf.LogFormat, conf.LogExclusions)
     translate.init(conf.DefaultLanguage, conf.TranslationTemplate, conf.AutoReload)
-    model.init(conf.DbSchema, conf.DbPath, conf.DbStatements)
+    model.init()
 
     bottle.route("/<url:path>", unsupported) # Add after plugin endpoints
 
     sys.path.append(conf.RootPath)
     myapp = bottle.default_app()
+    myapp.get_url = (lambda f: (lambda r, **k: conf.ServerPrefix + f(r, **k)))(myapp.get_url)
     bottle.BaseTemplate.defaults.update(get_url=myapp.get_url, _=translate.translate)
 
     app = beaker.middleware.SessionMiddleware(myapp, {
