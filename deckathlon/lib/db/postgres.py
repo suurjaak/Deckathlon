@@ -407,6 +407,10 @@ class Transaction(TX):
         self._cursor = None
         return exc_type in (None, Rollback)
 
+    def open(self):
+        """Opens database connection if not already open."""
+        pass # Connection pool is always open
+
     def close(self, commit=True):
         """
         Closes the transaction, performing commit or rollback as configured,
@@ -431,7 +435,9 @@ class Transaction(TX):
 
 
 if psycopg2:
-    psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
-    psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
-    psycopg2.extensions.register_adapter(dict, lambda x: psycopg2.extras.Json(x, json_dumps))
-    psycopg2.extras.register_default_jsonb(globally=True, loads=json_loads)
+    try:
+        psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)
+        psycopg2.extensions.register_type(psycopg2.extensions.UNICODEARRAY)
+        psycopg2.extensions.register_adapter(dict, lambda x: psycopg2.extras.Json(x, json_dumps))
+        psycopg2.extras.register_default_jsonb(globally=True, loads=json_loads)
+    except Exception: logger.exception("Error configuring psycopg.")

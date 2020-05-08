@@ -13,7 +13,7 @@ import sys
 """Program version."""
 Title = "Deckathlon"
 Name = "deckathlon"
-Version = "0.1.dev3"
+Version = "0.1.dev4"
 VersionDate = "08.05.2019"
 
 """Application code root path."""
@@ -53,8 +53,14 @@ ServerBackend = "wsgiref"
 """Options passed to the web server backend, like "ssl_pem"."""
 ServerBackendOptions = {}
 
-"""Data polling interval, in milliseconds."""
-PollInterval = 1000
+"""Data polling interval, in seconds."""
+PollInterval = 1
+
+"""Time after last request when user is considered offline, in seconds"""
+OfflineInterval = 180
+
+"""Interval after which online-flag gets updated in db, in seconds"""
+OnlineUpdateInterval = 30
 
 """Secret key for login and password hashes."""
 SecretKey = "d02edd84-8acd-430a-b764-89064295cc75"
@@ -218,6 +224,17 @@ DbSchema = {
             "fk_table":    {"fk": "tables"},
             "fk_user":     {"fk": "users"},
             "dt_created":  {},
+        },
+    },
+
+    "online": {
+        "key":     "id",
+        "fields":  {
+            "id":          {},
+            "fk_user":     {"fk": "users"},
+            "fk_table":    {"fk": "tables"},
+            "active":      {},
+            "dt_online":   {},
         },
     },
 

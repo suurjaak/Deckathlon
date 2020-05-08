@@ -94,19 +94,16 @@ from . import Database as DB, Rollback, Transaction as TX
 from . import json_dumps, json_loads, parse_datetime
 
 
-
 class Database(DB):
     """Convenience wrapper around sqlite3.Connection."""
 
     def __init__(self, path=":memory:", **kwargs):
         """Creates a new SQLite connection."""
+        self.path, self.connection = path, None
         if ":memory:" != path and not os.path.exists(path):
             try: os.makedirs(os.path.dirname(path))
             except OSError: pass
-        conn = sqlite3.connect(path, detect_types=sqlite3.PARSE_DECLTYPES,
-               isolation_level=None, check_same_thread=False)
-        conn.row_factory = lambda cursor, row: dict(sqlite3.Row(cursor, row))
-        self.connection = conn
+        self.open()
 
 
     def insert(self, table, values=(), **kwargs):
@@ -130,11 +127,20 @@ class Database(DB):
         self.connection.executescript(sql)
 
 
+    def open(self):
+        """Opens the database connection, if not already open."""
+        if self.connection: return
+        conn = sqlite3.connect(self.path, detect_types=sqlite3.PARSE_DECLTYPES,
+               isolation_level=None, check_same_thread=False)
+        conn.row_factory = lambda cursor, row: dict(sqlite3.Row(cursor, row))
+        self.connection = conn
+
+
     def close(self):
         """Closes the database connection."""
         try: self.connection.close()
         except Exception: pass
-        super(Database, self).close()
+        self.connection = None
 
 
     def makeSQL(self, action, table, cols="*", where=(), group=(), order=(),
@@ -222,9 +228,7 @@ class Transaction(TX):
 
     def close(self, commit=None):
         """
-        Closes the transaction, performing commit or rollback as configured,
-        and releases database connection back to connection pool.
-        Required if not using transaction as context manager in a with-block.
+        Closes the transaction, performing commit or rollback as configured.
 
         @param   commit  True for final commit, False for rollback
         """
@@ -237,9 +241,11 @@ class Transaction(TX):
         
 
 
-[sqlite3.register_adapter(x, json_dumps) for x in (dict, list, tuple)]
-sqlite3.register_converter("JSON", json_loads)
-sqlite3.register_converter("timestamp", parse_datetime)
+try:
+    [sqlite3.register_adapter(x, json_dumps) for x in (dict, list, tuple)]
+    sqlite3.register_converter("JSON", json_loads)
+    sqlite3.register_converter("timestamp", parse_datetime)
+except Exception: logger.exception("Error configuring sqlite.")
 
 
 

@@ -27,6 +27,9 @@ def login(username, password):
     passhash = hashlib.pbkdf2_hmac("sha256", password, conf.SecretKey, 10000)
     where = {"username": username, "password": passhash.encode("hex")}
     data = db.fetchone("users", where=where)
+
+    if data: db.update("online", {"dt_online": util.utcnow(), "active": True},
+                       fk_user=data["id"], fk_table=None)
     return adapt(data, data and data["id"], "users")
 
 
@@ -34,6 +37,7 @@ def login(username, password):
 def pagedata(request, page, userid=None, **kwargs):
     """Returns data for page as {type: [{..}, ]}."""
     data, error, status = {}, None, httplib.OK
+    update_offline()
 
     if "index" == page:
         data, error, status = gaming.Table(userid).index()
@@ -54,8 +58,6 @@ def pagedata(request, page, userid=None, **kwargs):
                                 version=conf.Version,
                                 versiondate=conf.VersionDate)
 
-    #if userid: # @todo figure it out
-    #    db.update("users", {"dt_online": util.utcnow()}, id=userid)
     if not error and userid:
         data["user"] = db.fetchone("users", id=userid)
 
@@ -70,6 +72,7 @@ def data_action(datatype, path, op, data, userid=None):
     @return  (payload, error, HTTP status)
     """
     result, error, status = None, None, httplib.OK
+    update_offline()
 
     if "POST" == op:
 
@@ -91,6 +94,7 @@ def data_action(datatype, path, op, data, userid=None):
             else:
                 pw = hashlib.pbkdf2_hmac("sha256", password, conf.SecretKey, 10000)
                 userid = db.insert("users", username=username, password=pw.encode("hex"))
+                db.insert("online", fk_user=userid)
                 result = db.fetchone("users", id=userid)
 
     if "PUT" == op:
@@ -108,17 +112,13 @@ def data_action(datatype, path, op, data, userid=None):
             else:
                 error, status = "Table not found", httplib.NOT_FOUND
 
-    #if userid: # @todo figure it out
-    #    db.update("users", {"dt_online": util.utcnow()}, id=userid)
-
     return adapt(result, userid, datatype), error, status
 
 
 def poll(args, userid, tableid=None):
-    """
-    Returns data for poll request, as (data, error, status).
-    """
+    """Returns data for poll request, as (data, error, status)."""
     result, error, status = {}, None, httplib.OK
+    update_offline()
 
     dt_from = args.get("dt_from")
     if dt_from and "dt_now" in args:
@@ -132,11 +132,19 @@ def poll(args, userid, tableid=None):
     return adapt({k: v for k, v in result.items() if v} if result else result, userid), error, status
 
 
+def update_offline():
+    """Drops active-flag from all users with sufficient inactivity."""
+    DELTA_OFFLINE = datetime.timedelta(seconds=conf.OfflineInterval)
+    where = {"dt_online": ("<", util.utcnow() - DELTA_OFFLINE)}
+    db.update("online", {"active": False}, where=where)
+
+
 def adapt(data, userid, datatype=None):
     """
     Processes data for UI. Retains only configured fields, drop fields 
     where drop=True, runs field adapters.
     """
+    db.close()
     if not data: return data
     result = data
 

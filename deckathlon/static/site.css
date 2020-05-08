@@ -287,7 +287,13 @@ div.player div.name.turn {
   font-weight:      bold;
 }
 div.player div.name.turn::after {
-  content:          " ●"; /* Filled circle */
+  content:          " ●"; /* Filled circle &#9899; */
+}
+div.player div.name.offline {
+  filter:           grayscale(100%);
+}
+div.player div.name.offline::after {
+  content:          "⛅"; /* Sun behind cloud &#9925; */
 }
 
 div.table div.player.me div.cards button.look {

@@ -43,10 +43,11 @@ CREATE TABLE IF NOT EXISTS online (
   id         INTEGER   PRIMARY KEY AUTOINCREMENT NOT NULL,
   fk_user    INTEGER   NOT NULL REFERENCES users (id),
   fk_table   INTEGER   REFERENCES tables (id),
-  active     INTEGER   NOT NULL DEFAULT 0,
+  active     INTEGER   NOT NULL DEFAULT 1,
   dt_online  TIMESTAMP DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now')),
   dt_created TIMESTAMP NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now')),
-  dt_changed TIMESTAMP NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now'))
+  dt_changed TIMESTAMP NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%fZ', 'now')),
+  UNIQUE (fk_user, fk_table)
 );
 
 

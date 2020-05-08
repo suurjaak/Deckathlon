@@ -9,7 +9,7 @@ Index page template.
 
 @author      Erki Suurjaak
 @created     18.04.2020
-@modified    05.05.2020
+@modified    08.05.2020
 %"""
 %from deckathlon import conf
 %from deckathlon.lib import util
@@ -52,10 +52,10 @@ Index page template.
     vmf = new Vue({el: "#footer", data: {langs: languages}});
 %if get("poll"):
 
-    Data.poll("{{! poll["url"] }}", {{ poll["interval"] }}, new function() {
+    Data.poll("{{! poll["url"] }}", {{ poll["interval"] * 1000 }}, new function() {
       var dt_from = null;
       return function() {
-        var dt = new Date(dt_from - 1000) || new Date(new Date() - {{ poll["interval"] * 2000 }});
+        var dt = dt_from ? new Date(dt_from - 1000) : new Date(new Date() - {{ poll["interval"] * 2000 }});
         dt_from = new Date();
         return {dt_from: dt, dt_now: dt_from};
       };

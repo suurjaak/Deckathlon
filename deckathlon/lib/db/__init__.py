@@ -184,11 +184,10 @@ class Database(object):
         """
         Returns a new or cached Database, or first created if opts is None.
         """
-        if opts is None:
-            return next(iter(cls.CACHE.values()), None)
-        key = (engine, json_dumps(opts))
+        key = next(iter(cls.CACHE)) if opts is None else (engine, json_dumps(opts))
 
-        if key not in cls.CACHE:
+        if key in cls.CACHE: cls.CACHE[key].open()
+        else:
             if cls.ENGINES is None:
                 basefile = os.path.realpath(__file__)
                 cls.ENGINES = load_modules(__package__, basefile)
@@ -282,10 +281,14 @@ class Database(object):
         return self.engine.Transaction(self, commit)
 
 
+    def open(self):
+        """Opens database connection if not already open."""
+        raise NotImplementedError()
+
+
     def close(self):
-        """Closes connection, removes db instance from cache."""
-        key = next((k for k, v in self.CACHE.items() if v == self), None)
-        self.CACHE.pop(key, None)
+        """Closes connection."""
+        raise NotImplementedError()
 
 
     def makeSQL(self, action, table, cols='*', where=(), group=(), order=(),

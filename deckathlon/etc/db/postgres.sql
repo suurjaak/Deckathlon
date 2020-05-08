@@ -45,11 +45,12 @@ CREATE TABLE online (
   id         BIGSERIAL,
   fk_user    BIGINT    NOT NULL,
   fk_table   BIGINT,
-  active     BIGINT    NOT NULL DEFAULT 0,
+  active     BIGINT    NOT NULL DEFAULT 1,
   dt_online  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   dt_created TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   dt_changed TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (id)
+  PRIMARY KEY (id),
+  UNIQUE (fk_user, fk_table)
 );
 
 
@@ -160,3 +161,5 @@ CREATE TRIGGER a_update_row_timestamp BEFORE UPDATE ON online    FOR EACH ROW EX
 CREATE TRIGGER a_update_row_timestamp BEFORE UPDATE ON players   FOR EACH ROW EXECUTE PROCEDURE update_row_timestamp();
 CREATE TRIGGER a_update_row_timestamp BEFORE UPDATE ON tables    FOR EACH ROW EXECUTE PROCEDURE update_row_timestamp();
 CREATE TRIGGER a_update_row_timestamp BEFORE UPDATE ON templates FOR EACH ROW EXECUTE PROCEDURE update_row_timestamp();
+
+INSERT INTO users (id, username, password) VALUES (1, 'admin', '0fb57789d87a97f7949ab902b3f2d8001acb6ddea7b4fc0b46a4681124245f4e');

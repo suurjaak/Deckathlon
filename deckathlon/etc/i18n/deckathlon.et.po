@@ -97,6 +97,9 @@ msgstr "Pealtvaatajad"
 msgid  "Player #{0}"
 msgstr "Mängija #{0}"
 
+msgid  "Offline since {0}"
+msgstr "Viimati nähtud {0}"
+
 msgid  "Give"
 msgstr "Anna"
 

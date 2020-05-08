@@ -550,7 +550,10 @@ var TEMPLATE_TABLE = `
 
 
       <div v-for="(playerx, i) in otherplayers" v-bind:class="getClass('player', i)">
-        <div v-bind:class="'name' + (isTurn(playerx) ? ' turn' : '')">{{ getName(playerx) }}</div>
+        <div v-bind:class="getClass('name', playerx)"
+             v-bind:title="offline[playerx.fk_user] ? _('Offline since {0}').format(offline[playerx.fk_user].toISOString()) : ''">
+          {{ getName(playerx) }}
+        </div>
         <div class="cards">
           <div v-for="card in getData('hand', playerx)" v-html="Cardery.tag(card)" class="card"></div>
         </div>
@@ -694,6 +697,7 @@ Vue.component("page_table", {
       template:     null, // templates-row for game
       usermap:      [],   // {id_user:   {users-row}, }
       playermap:    {},   // {id_player: {players-row}, }
+      offline:      {},   // {id_user: Date last seen, }
       user:         null, // User account
       hand:         [],   // Current hand, with temporary local changes
       move:         {},   // Current move (or bid) being made
@@ -718,10 +722,14 @@ Vue.component("page_table", {
     self.usermap      = Data.db.users.get();
     self.playermap    = Data.db.players.get();
     self.hand         = self.player ? self.player.hand : [];
+    self.offline      = Data.db.online.list().reduce(function(o, v) {
+      if (!v.active) o[v.fk_user] = v.dt_online; return o;
+    }, {});
 
     self.unsubscribes = [Data.db.tables.listen(self.onData),
                          Data.db.players.listen(self.onData),
                          Data.db.games.listen(self.onData),
+                         Data.db.online.listen(self.onData),
                          Data.db.table_users.listen(self.onData),
                          Data.db.templates.listen(self.onData),
                          Data.db.users.listen(self.onData)];
@@ -891,7 +899,7 @@ Vue.component("page_table", {
         return o;
       }, {});
 
-      var result = Data.db.table_users.filter(function(x) { return !idmap[x.fk_user]; });
+      var result = Data.db.table_users.filter(function(x) { return !idmap[x.fk_user] && !self.offline[x.fk_user]; });
       return Util.sortObjects(result, "fk_user", null, function(x) { return idmap[x]; });
     },
 
@@ -992,6 +1000,9 @@ Vue.component("page_table", {
         if (Util.get(self.template, 'opts', 'stack')) result += " stack";
       } else if ("player" == name) {
          result += " pos{0}of{1}".format(a + 1, self.players.length);
+      } else if ("name" == name) {
+         result = "name" + (self.isTurn(a) ? " turn" : "");
+         if (self.offline[a.fk_user]) result += " offline";
       };
       return result;
     },
@@ -1104,7 +1115,11 @@ Vue.component("page_table", {
         self.game = Data.db.games.next(self.table ? {sequence: self.table.games} : null);
       } else if ("users" == type)     self.usermap  = Data.db.users.get();
       else if ("templates" == type) self.template = Data.db.templates.next();
-      else self[type] = Data.db[type].list();
+      else if ("online" == type) {
+        self.offline = Data.db.online.list().reduce(function(o, v) {
+          if (!v.active) o[v.fk_user] = v.dt_online; return o;
+        }, {});
+      } else self[type] = Data.db[type].list();
 
       if ("players" == type) {
         self.player0   = self.player

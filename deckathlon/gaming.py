@@ -69,6 +69,7 @@ class Table(object):
             self._tx.insert("players",     fk_table=result["id"], fk_user=self._userid)
             self._tx.commit()
 
+        self.update_online()
         return result, error, status
 
 
@@ -92,6 +93,8 @@ class Table(object):
             error, status = "Forbidden", httplib.FORBIDDEN
         else:
             error, status = "Not found", httplib.NOT_FOUND
+
+        self.update_online()
         return result, error, status
 
 
@@ -126,6 +129,7 @@ class Table(object):
         elif not table:
             error, status = "Not found", httplib.NOT_FOUND
 
+        self.update_online()
         return result, error, status
 
 
@@ -181,6 +185,7 @@ class Table(object):
         result["users"]     = self._tx.fetchall("users", id=("IN", set(hosters)))
         result["templates"] = self._tx.fetchall("templates", dt_deleted=None)
 
+        self.update_online()
         return result, error, status
 
 
@@ -202,6 +207,7 @@ class Table(object):
 
         if not error and not any(self._userid == x["fk_user"] for x in table_users):
             self._tx.insert("table_users", fk_table=table["id"], fk_user=self._userid)
+            self._tx.insert("online", fk_table=table["id"], fk_user=self._userid)
             self._tx.commit()
             table_users = self._tx.fetchall("table_users", fk_table=table["id"],
                                             dt_deleted=None)
@@ -213,26 +219,28 @@ class Table(object):
             )
 
             dt_from = dt_from or pytz.utc.localize(datetime.datetime.min)
+            where = {"dt_changed": (">", dt_from), "fk_table": table["id"],
+                     "fk_user": ("IN", set(util.unwrap(users, "id")) - set([self._userid]))}
+            online = self._tx.fetchall("online", where=where)
+
             if not table   ["dt_changed"] > dt_from: table     = None
             if not template["dt_changed"] > dt_from: template  = None
             if game and not game["dt_changed"] > dt_from: game = None
+
             table_users = [x for x in table_users if x["dt_changed"] > dt_from]
             players     = [x for x in players     if x["dt_changed"] > dt_from]
             userids = set(util.unwrap(table_users, "fk_user")) | set(util.unwrap(players, "fk_user"))
             users = [x for x in users if x["dt_changed"] > dt_from or x["id"] in userids]
 
             result = dict(tables=[table], games=[game], players=players, users=users,
-                          table_users=table_users, templates=[template])
+                          online=online, table_users=table_users, templates=[template])
             result = {k: v for k, v in result.items() if any(v)}
             for datatype in "players", "table_users":
                 dels = self._tx.fetchall(datatype, "id", dt_deleted=("!=", None),
                                          dt_changed=(">", dt_from))
                 if dels: result.setdefault("__deleted__", {})[datatype] = dels
 
-        # @todo figure it out
-        #self._tx.update("table_users", {"dt_online": util.utcnow()},
-        #                fk_table=tableid, fk_user=self._userid)
-
+        self.update_online()
         return self.adapt_data(result), error, status
 
 
@@ -244,7 +252,10 @@ class Table(object):
         """
         result, error, status = {}, None, httplib.OK
 
-        where = {"EXPR": ("(public = ? OR fk_host = ?)", [True, self._userid])}
+        where = {"EXPR": ("(public = ? OR fk_host = ? or id in "
+                          "(SELECT fk_table FROM table_users WHERE fk_table = tables.id "
+                          "AND fk_user = ? AND dt_deleted IS NULL))",
+                          [True, self._userid, self._userid])}
         if dt_from: where["dt_changed"] = (">=", dt_from)
         result["tables"] = self._tx.fetchall("tables", where=where)
 
@@ -265,7 +276,26 @@ class Table(object):
                                  fk_host=("!=", self._userid), public=False)
         if dels: result.setdefault("__deleted__", {})["tables"] = util.unwrap(dels)
 
+        self.update_online()
         return result, error, status
+
+
+    def update_online(self):
+        """
+        Updates user's online status.
+        """
+        DELTA_UPDATE = datetime.timedelta(seconds=conf.OnlineUpdateInterval)
+        now = util.utcnow()
+
+        where = dict(fk_user=self._userid)
+        for tableid in set([None, (self._table or {}).get("id")]):
+            where.update(fk_table=tableid)
+            row = self._tx.fetchone("online", where=where)
+            if not row: self._tx.insert("online", where)
+            elif now - row["dt_online"] > DELTA_UPDATE:
+                self._tx.update("online", {"dt_online": now, "active": True},
+                                where=where)
+            self._tx.commit()
 
 
     def action(self, data):
@@ -304,6 +334,7 @@ class Table(object):
             self._tx.commit()
 
 
+        self.update_online()
         return self.adapt_data(result), error, status
 
 
