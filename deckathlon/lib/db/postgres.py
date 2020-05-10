@@ -103,8 +103,6 @@ class Database(DB):
         """
         Context manager for psycopg connection.
         Acquires a connection from the pool and releases it when exiting context.
-
-        @param   config      {DB_MAXCONN, DB_NAME, DB_USER, DB_PASS, DB_HOST, DB_PORT}
         """
         if self._key not in self.POOL: self.POOL[self._key] = \
         psycopg2.pool.ThreadedConnectionPool(

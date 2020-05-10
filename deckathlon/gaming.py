@@ -581,8 +581,7 @@ class Table(object):
                     # Bidding player wins talon
                     player2id = winningbid["fk_player"]
                     player2 = next((x for x in players if x["id"] == player2id), None)
-                    pchanges2 = {"hand": player2["hand"] + game["talon"]}
-                    pchanges2["hand"].sort(cmp=lambda a, b: -cmp_cards(template, a, b))
+                    pchanges2 = {"hand": sort(template, player2["hand"] + game["talon"])}
                     gchanges.update(talon=[], status="ongoing", fk_player=player2id)
 
                     if util.get(template["opts"], "bidding", "distribute"):
@@ -630,11 +629,9 @@ class Table(object):
         and not util.get(template, "opts", "nextgame", "distribute"):
             error, status = "Not player's turn", httplib.FORBIDDEN
         else:
-            dist = {int(k): sorted(v, cmp=lambda a, b: -cmp_cards(template, a, b))
-                    for k, v in data["data"].items()}
+            dist = {int(k): sort(template, v) for k, v in data["data"].items()}
             expected = {int(k): v for k, v in player["expected"]["distribute"].items()}
-            allgiven = sorted((x for xx in dist.values() for x in xx),
-                              cmp=lambda a, b: -cmp_cards(template, a, b))
+            allgiven = sort(template, [x for xx in dist.values() for x in xx])
 
             if set(dist) - set(util.unwrap(players, "id")) \
             or set(dist) - set(expected):
@@ -688,8 +685,7 @@ class Table(object):
                     for pmove in gchanges["moves"][-1]:
                         # Update receiving player hands
                         player2 = next(x for x in players if x["id"] == pmove["fk_player2"])
-                        pchanges2 = {"hand": player2["hand"] + pmove["cards"]}
-                        pchanges2["hand"].sort(cmp=lambda a, b: -cmp_cards(template, a, b))
+                        pchanges2 = {"hand": sort(template, player2["hand"] + pmove["cards"])}
                         self._tx.update("players", pchanges2, id=player2["id"])
 
                     if util.get(template, "opts", "lead", "0", "ranking") is not None:
@@ -715,8 +711,7 @@ class Table(object):
 
                 for fk_player, cards in dist.items():
                     player2 = next(x for x in players if x["id"] == fk_player)
-                    pchanges2 = {"hand": player2["hand"] + cards}
-                    pchanges2["hand"].sort(cmp=lambda a, b: -cmp_cards(template, a, b))
+                    pchanges2 = {"hand": sort(template, player2["hand"] + cards)}
                     self._tx.update("players", pchanges2, id=fk_player)
 
                 pchanges["expected"] = {"move": True}
@@ -747,15 +742,16 @@ class Table(object):
         else:
             cards = data["data"].get("cards") or []
             do_pass, do_crawl, do_trump = (data["data"].get(x) for x in 
-                                           ("pass", "crawl", "trump"))
+                                          ("pass", "crawl", "trump"))
+            # @todo võiks ka kontrollida, et crawl ja trump üldse saab templates teha
             do_special = next((x for x in util.get(template, "opts", "move", "special") or {}
                                if x != "trump" and data["data"].get(x)), None)
             expected = player["expected"].get("cards")
 
             if do_pass and not game["trick"]:
-                error, status = "Can not pass", httplib.BAD_REQUEST
+                error, status = "Cannot pass", httplib.BAD_REQUEST
             if do_pass and not util.get(template, "opts", "move", "pass"):
-                error, status = "Can not pass", httplib.BAD_REQUEST
+                error, status = "Cannot pass", httplib.BAD_REQUEST
             elif not cards and not do_pass:
                 error, status = "Not the right amount of cards", httplib.BAD_REQUEST
             elif len(drop(player["hand"], cards)) > len(player["hand"]) - len(cards):
@@ -1051,9 +1047,14 @@ def distribute_deck(template, players, deck):
         result["talon"] = deck
 
     for p in players:
-        result[p["id"]].sort(cmp=lambda a, b: -cmp_cards(template, a, b))
+        result[p["id"]] = sort(template, result[p["id"]])
 
     return result
+
+
+def sort(template, cards):
+    """Returns cards sorted according to template options."""
+    return sorted(cards, cmp=lambda a, b: -cmp_cards(template, a, b))
 
 
 def cmp_cards(template, a, b):
@@ -1257,13 +1258,13 @@ def last_cards(trick):
 
 
 def suite(card):
-    """Returns card suite, one of "DHSC" or "" for joker."""
+    """Returns card suite, one of "DHSC" or "X" for joker."""
     return card[1:]
 
 
 def level(card):
     """Returns card level, one of "234567890JQKAX"."""
-    return card[:1]
+    return "X" if "X" == card[1:] else card[:1]
 
 
 def strength(template, card):
