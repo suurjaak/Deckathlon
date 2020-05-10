@@ -429,13 +429,13 @@ div.tabletop div.moves div.trick div.player.pos1of8 {
   bottom:          10%;
   left:            calc(25% - 100pt);
 }
+div.tabletop div.moves div.trick div.player.pos1of3,
 div.tabletop div.moves div.trick div.player.pos1of4,
 div.tabletop div.moves div.trick div.player.pos2of7,
 div.tabletop div.moves div.trick div.player.pos2of8 {
   top:             calc(50% - 20pt);
   left:            calc(25% - 100pt);
 }
-div.tabletop div.moves div.trick div.player.pos1of3,
 div.tabletop div.moves div.trick div.player.pos2of5,
 div.tabletop div.moves div.trick div.player.pos3of6,
 div.tabletop div.moves div.trick div.player.pos3of7,
@@ -449,7 +449,6 @@ div.tabletop div.moves div.trick div.player.pos4of8 {
   top:             10%;
   left:            calc(50% - 100pt);
 }
-div.tabletop div.moves div.trick div.player.pos2of3,
 div.tabletop div.moves div.trick div.player.pos3of5,
 div.tabletop div.moves div.trick div.player.pos4of6,
 div.tabletop div.moves div.trick div.player.pos4of7,
@@ -457,6 +456,7 @@ div.tabletop div.moves div.trick div.player.pos5of8 {
   top:             10%;
   left:            calc(75% - 100pt);
 }
+div.tabletop div.moves div.trick div.player.pos2of3,
 div.tabletop div.moves div.trick div.player.pos3of4,
 div.tabletop div.moves div.trick div.player.pos5of7,
 div.tabletop div.moves div.trick div.player.pos6of8 {
@@ -557,17 +557,31 @@ div.tabletop div.moves div.trick div.stack {
 
 
 /** Trick history popup styling. */
+#appdialog div.html {
+  display:         flex;
+  align-items:     flex-start;
+  justify-content: center;
+}
 #appdialog div.html div.move {
-  display:         inline-block;
+  display:         flex;
+  flex-direction:  column;
+  justify-content: center;
   position:        relative;
+}
+#appdialog div.html div.move div.name {
+  font-size:       0.8em;
+  text-align:      center;
+  opacity:         0.5;
+  overflow:        hidden;
+  white-space:     nowrap;
+  width:           50pt;
 }
 #appdialog div.html div.move div.special {
   font-size:       0.8em;
   text-align:      center;
+  opacity:         0.5;
   width:           50pt;
-  position:        absolute;
-  bottom:          -15pt;
-  left:            calc(-50% + 12pt);
+  position:        unset;
 }
 
 

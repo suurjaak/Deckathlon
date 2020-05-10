@@ -681,7 +681,6 @@ Vue.component("page_table", {
 
   sounds: {
     deal:  "deal.mp3",  // Played on cards being dealt
-    move:  "move.mp3",  // Played on another player making move
     knock: "knock.mp3", // Played on current player's turn
   },
 
@@ -737,6 +736,10 @@ Vue.component("page_table", {
     window.setTimeout(self.scrollToBottom, 500, "scores");
     window.setTimeout(self.scrollToBottom, 500, "trick");
     window.setTimeout(self.scrollToBottom, 500, "bid");
+    // Pre-fetch sounds
+    Util.objectFilter(self.$options.sounds, function(file) {
+      new Audio(Data.db.settings.get("staticURL") + "media/" + file);
+    });
   },
 
 
@@ -797,7 +800,7 @@ Vue.component("page_table", {
     /** Returns whether current cards distribution has all requirements filled. */
     distributable: function() {
       var self = this;
-      var result = Boolean(self.player);
+      var result = Boolean(Util.get(self.player, "expected", "distribute"));
       result && Util.objectMap(self.player.expected.distribute, function(playerid, count) {
         if (count > (self.move[playerid] ? self.move[playerid] : []).length) result = false;
       });
@@ -1064,27 +1067,24 @@ Vue.component("page_table", {
         || self.game0.id != self.game.id) sound = "deal";
       };
 
+      // @todo kehvaste veel.. bidding -> distributing -> move on vahepeal kopp
       if (!sound && "games" == type) {
         if (!Util.isEmpty(self.game) && !Util.isEmpty(self.player)
         && Util.get(self.game0, "fk_player") != self.game.fk_player && self.game.fk_player == self.player.id) {
           sound = "knock";
         }
 
-        else if (!Util.isEmpty(self.game) && !Util.isEmpty(self.game.trick)
-        && JSON.stringify(Util.get(self.game0, "trick")) != JSON.stringify(self.game.trick)) {
-          sound = "move";
-        }
-
       } else if ("players" == type) {
         if (!Util.isEmpty(self.player) && !Util.isEmpty(self.player.expected)
-        && JSON.stringify(Util.get(self.player0, "expected")) != JSON.stringify(self.player.expected)) {
+        && JSON.stringify(Util.get(self.player0, "expected")) != JSON.stringify(self.player.expected)
+        && (Util.isEmpty(self.game0) && Util.isEmpty(self.game) || !self.game.fk_player)) {
           sound = "knock";
         }
       };
 
 
       var file = self.$options.sounds[sound];
-      if (file) new Audio(Data.db.settings.get("staticURL") + "media/" + file).play();
+      if (file && "ended" != self.game.status) new Audio(Data.db.settings.get("staticURL") + "media/" + file).play();
     },
 
 
@@ -1381,9 +1381,11 @@ Vue.component("page_table", {
         var trick = player.tricks[index];
       };
       var cards = trick.map(function(move) {
-        return Util.createElement("div", {"class": "move"}, move.cards.map(function(card) {
+        return Util.createElement("div", {"class": "move"}, [
+          Util.createElement("div", {"class": "name"}, _(self.getName(move))),
+        ].concat(move.cards.map(function(card) {
             return Cardery.tag(card, true);
-          }).concat([
+          })).concat([
             self.getMoveSpecial(move) ? 
             Util.createElement("div", {"class": "special"}, _(self.getMoveSpecial(move))) :
             null
@@ -1571,6 +1573,7 @@ var Cardery = new function() {
     "KS": "&#x1f0ae;", "KH": "&#x1f0be;", "KD": "&#x1f0ce;", "KC": "&#x1f0de;",
     "AS": "&#x1f0a1;", "AH": "&#x1f0b1;", "AD": "&#x1f0c1;", "AC": "&#x1f0d1;",
     "X":  "&#x1f0cf;", // Joker
+    "XX": "&#x1f0cf;", "YX": "&#x1f0cf;", "ZX": "&#x1f0cf;", // Unique jokers
     " ":  "&#x1f0a0;", // Card back
     "D":  "&#x2666;",
     "H":  "&#x2665;",
