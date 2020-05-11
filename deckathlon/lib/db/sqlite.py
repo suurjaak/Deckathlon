@@ -90,57 +90,11 @@ import os
 import re
 import sqlite3
 
-from . import Database as DB, Rollback, Transaction as TX
+from . import Database as DB, Queryable as QQ, Rollback, Transaction as TX
 from . import json_dumps, json_loads, parse_datetime
 
 
-class Database(DB):
-    """Convenience wrapper around sqlite3.Connection."""
-
-    def __init__(self, path=":memory:", **kwargs):
-        """Creates a new SQLite connection."""
-        self.path, self.connection = path, None
-        if ":memory:" != path and not os.path.exists(path):
-            try: os.makedirs(os.path.dirname(path))
-            except OSError: pass
-        self.open()
-
-
-    def insert(self, table, values=(), **kwargs):
-        """
-        Convenience wrapper for database INSERT, returns inserted row ID.
-        Keyword arguments are added to VALUES.
-        """
-        values = list(values.items() if isinstance(values, dict) else values)
-        values += kwargs.items()
-        sql, args = self.makeSQL("INSERT", table, values=values)
-        return self.execute(sql, args).lastrowid
-
-
-    def execute(self, sql, args=None):
-        """Executes the SQL and returns sqlite3.Cursor."""
-        return self.connection.execute(sql, args or {})
-
-
-    def executescript(self, sql):
-        """Executes the SQL as script of any number of statements."""
-        self.connection.executescript(sql)
-
-
-    def open(self):
-        """Opens the database connection, if not already open."""
-        if self.connection: return
-        conn = sqlite3.connect(self.path, detect_types=sqlite3.PARSE_DECLTYPES,
-               isolation_level=None, check_same_thread=False)
-        conn.row_factory = lambda cursor, row: dict(sqlite3.Row(cursor, row))
-        self.connection = conn
-
-
-    def close(self):
-        """Closes the database connection."""
-        try: self.connection.close()
-        except Exception: pass
-        self.connection = None
+class Queryable(QQ):
 
 
     def makeSQL(self, action, table, cols="*", where=(), group=(), order=(),
@@ -150,7 +104,7 @@ class Database(DB):
         cols   =    cols if isinstance(cols,  basestring) else ", ".join(cols)
         group  =   group if isinstance(group, basestring) else ", ".join(group)
         order  = [order] if isinstance(order, basestring) else order
-        limit  = [limit] if isinstance(limit, (basestring, int)) else limit
+        limit  = [limit] if isinstance(limit, (basestring, int, long)) else limit
         values = values if not isinstance(values, dict) else values.items()
         where  =  where if not isinstance(where, dict)  else where.items()
         if len(order) == 2 and isinstance(order[0], basestring) \
@@ -208,7 +162,58 @@ class Database(DB):
 
 
 
-class Transaction(TX):
+class Database(DB, Queryable):
+    """Convenience wrapper around sqlite3.Connection."""
+
+    def __init__(self, path=":memory:", **kwargs):
+        """Creates a new SQLite connection."""
+        super(Database, self).__init__()
+        self.path, self.connection = path, None
+        if ":memory:" != path and not os.path.exists(path):
+            try: os.makedirs(os.path.dirname(path))
+            except OSError: pass
+        self.open()
+
+
+    def insert(self, table, values=(), **kwargs):
+        """
+        Convenience wrapper for database INSERT, returns inserted row ID.
+        Keyword arguments are added to VALUES.
+        """
+        values = list(values.items() if isinstance(values, dict) else values)
+        values += kwargs.items()
+        sql, args = self.makeSQL("INSERT", table, values=values)
+        return self.execute(sql, args).lastrowid
+
+
+    def execute(self, sql, args=None):
+        """Executes the SQL and returns sqlite3.Cursor."""
+        return self.connection.execute(sql, args or {})
+
+
+    def executescript(self, sql):
+        """Executes the SQL as script of any number of statements."""
+        self.connection.executescript(sql)
+
+
+    def open(self):
+        """Opens the database connection, if not already open."""
+        if self.connection: return
+        conn = sqlite3.connect(self.path, detect_types=sqlite3.PARSE_DECLTYPES,
+               isolation_level=None, check_same_thread=False)
+        conn.row_factory = lambda cursor, row: dict(sqlite3.Row(cursor, row))
+        self.connection = conn
+
+
+    def close(self):
+        """Closes the database connection."""
+        try: self.connection.close()
+        except Exception: pass
+        self.connection = None
+
+
+
+class Transaction(TX, Queryable):
     """Transaction context manager, breakable by raising Rollback."""
 
     def __init__(self, db, commit=True, **kwargs):
@@ -235,6 +240,23 @@ class Transaction(TX):
         if commit is False: self.rollback()
         elif commit:        self.commit()
 
+    def insert(self, table, values=(), **kwargs):
+        """
+        Convenience wrapper for database INSERT, returns inserted row ID.
+        Keyword arguments are added to VALUES.
+        """
+        values = list(values.items() if isinstance(values, dict) else values)
+        values += kwargs.items()
+        sql, args = self.makeSQL("INSERT", table, values=values)
+        return self.execute(sql, args).lastrowid
+
+    def execute(self, sql, args=None):
+        """Executes the SQL and returns sqlite3.Cursor."""
+        return self._db.connection.execute(sql, args or {})
+
+    def executescript(self, sql):
+        """Executes the SQL as script of any number of statements."""
+        self._db.connection.executescript(sql)
 
     def commit(self):   self._db.connection.commit()
     def rollback(self): self._db.connection.rollback()

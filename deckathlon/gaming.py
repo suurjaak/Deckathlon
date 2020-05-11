@@ -64,12 +64,16 @@ class Table(object):
             data["fk_creator"] = data["fk_host"] = self._userid
             data["players"] = 1
 
-            result = self._tx.fetchone("tables", id=self._tx.insert("tables", data))
+            tableid = self._tx.insert("tables", data)
+            logger.error("Created table, id #%s.", tableid) # @todo remove
+            logger.error("Current tables in db: %s.", self._tx.fetchall("tables")) # @todo remove
+            result = self._tx.fetchone("tables", id=tableid)
             self._tx.insert("table_users", fk_table=result["id"], fk_user=self._userid)
             self._tx.insert("players",     fk_table=result["id"], fk_user=self._userid)
             self._tx.commit()
 
         self.update_online()
+        self._tx.close()
         return result, error, status
 
 
@@ -95,6 +99,7 @@ class Table(object):
             error, status = "Not found", httplib.NOT_FOUND
 
         self.update_online()
+        self._tx.close()
         return result, error, status
 
 
@@ -130,10 +135,11 @@ class Table(object):
             error, status = "Not found", httplib.NOT_FOUND
 
         self.update_online()
+        self._tx.close()
         return result, error, status
 
 
-    def leave(self, tableid, playerid):
+    def leave(self, playerid):
         """
         Leaves table as player and user.
 
@@ -141,33 +147,34 @@ class Table(object):
         """
         result, error, status = None, None, httplib.OK
 
-        table = self._tx.fetchone("tables", id=tableid)
+        table = self._tx.fetchone("tables", where=(
+            "id IN (SELECT fk_table FROM players WHERE id = ? AND fk_user = ?)",
+            [playerid, self._userid]
+        ))
 
-        userid = None
+        playeruserid = None
         if not table:
             error, status = "Table not found", httplib.NOT_FOUND
         else:
-            table_users = self._tx.fetchall("table_users", fk_table=table["id"],
-                                            dt_deleted=None)
-            players = self._tx.fetchall("players", fk_table=table["id"],
-                                        dt_deleted=None)
-            userid = next((x["fk_user"] for x in players if x["id"] == playerid), None)
+            player = self._tx.fetchone("players", id=playerid,
+                                       fk_table=table["id"], dt_deleted=None)
+            if player: playeruserid = player["id"]
 
-        if not error and not any(self._userid == x["fk_user"] for x in table_users):
+        if not error and not playeruserid:
             error, status = "Forbidden", httplib.FORBIDDEN
 
-        if not error and table["fk_host"] != self._userid and userid != self._userid:
+        if not error and self._userid not in (table["fk_host"] , playeruserid):
             error, status = "Forbidden", httplib.FORBIDDEN
-        elif not error and table["fk_host"] != self._userid and userid != self._userid:
+        elif not error and table["fk_host"] == playeruserid:
             error, status = "Host cannot leave", httplib.BAD_REQUEST
 
         if not error:
-            self._tx.update("players", {"dt_deleted": util.utcnow()},
-                            fk_table=tableid, fk_user=self._userid)
+            self._tx.update("players", {"dt_deleted": util.utcnow()}, id=playerid)
             self._tx.update("table_users", {"dt_deleted": util.utcnow()},
-                            fk_table=tableid, fk_user=self._userid)
+                            fk_table=table["id"], fk_user=playeruserid)
             self._tx.commit()
 
+        self._tx.close()
         return result, error, status
 
 
@@ -186,10 +193,11 @@ class Table(object):
         result["templates"] = self._tx.fetchall("templates", dt_deleted=None)
 
         self.update_online()
+        self._tx.close()
         return result, error, status
 
 
-    def poll(self, tableid, dt_from=None):
+    def poll(self, tableid=None, shortid=None, dt_from=None):
         """
         Returns poll data for table page.
 
@@ -197,7 +205,8 @@ class Table(object):
         """
         result, error, status = None, None, httplib.OK
 
-        table = self._tx.fetchone("tables", id=tableid)
+        where = {"id": tableid} if tableid else {"shortid": shortid}
+        table = self._tx.fetchone("tables", where=where)
 
         if not table:
             error, status = "Not found", httplib.NOT_FOUND
@@ -239,9 +248,11 @@ class Table(object):
                 dels = self._tx.fetchall(datatype, "id", dt_deleted=("!=", None),
                                          dt_changed=(">", dt_from))
                 if dels: result.setdefault("__deleted__", {})[datatype] = dels
+        result = self.adapt_data(result)
 
         self.update_online()
-        return self.adapt_data(result), error, status
+        self._tx.close()
+        return result, error, status
 
 
     def poll_index(self, dt_from=None):
@@ -252,10 +263,10 @@ class Table(object):
         """
         result, error, status = {}, None, httplib.OK
 
-        where = {"EXPR": ("(public = ? OR fk_host = ? or id in "
-                          "(SELECT fk_table FROM table_users WHERE fk_table = tables.id "
-                          "AND fk_user = ? AND dt_deleted IS NULL))",
-                          [True, self._userid, self._userid])}
+        where = {"(public = ? OR fk_host = ? or id in "
+                 "(SELECT fk_table FROM table_users WHERE fk_table = tables.id "
+                 "AND fk_user = ? AND dt_deleted IS NULL))":
+                 [True, self._userid, self._userid]}
         if dt_from: where["dt_changed"] = (">=", dt_from)
         result["tables"] = self._tx.fetchall("tables", where=where)
 
@@ -277,6 +288,7 @@ class Table(object):
         if dels: result.setdefault("__deleted__", {})["tables"] = util.unwrap(dels)
 
         self.update_online()
+        self._tx.close()
         return result, error, status
 
 
@@ -330,12 +342,11 @@ class Table(object):
                 self._tx.insert("log", action=data.pop("action"),
                           data=data, fk_user=self._userid)
                 self._tx.commit()
-
-            self._tx.commit()
-
+        result = self.adapt_data(result)
 
         self.update_online()
-        return self.adapt_data(result), error, status
+        self._tx.close()
+        return result, error, status
 
 
     def start(self, data=None):
@@ -931,8 +942,8 @@ class Table(object):
         if player and not self._player:
             self._player = next((x for x in self._players if x["fk_user"] == self._userid), None)
         if users and not self._users:
-            where = {"EXPR": ("id IN (SELECT fk_user FROM table_users "
-                              "WHERE fk_table = ?)", [self._table["id"]])}
+            where = {"id IN (SELECT fk_user FROM table_users "
+                     "WHERE fk_table = ?)": [self._table["id"]]}
             self._users = self._tx.fetchall("users", where=where)
 
         if template: result.append(self._template)

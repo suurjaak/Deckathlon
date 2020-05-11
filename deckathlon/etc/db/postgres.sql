@@ -3,6 +3,7 @@ CREATE OR REPLACE FUNCTION update_row_timestamp() RETURNS trigger
     AS $$
 BEGIN
     NEW.dt_changed = now();
+    RETURN NEW;
 END;
 $$;
 
@@ -45,7 +46,7 @@ CREATE TABLE online (
   id         BIGSERIAL,
   fk_user    BIGINT    NOT NULL,
   fk_table   BIGINT,
-  active     BIGINT    NOT NULL DEFAULT 1,
+  active     BOOLEAN   NOT NULL DEFAULT TRUE,
   dt_online  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   dt_created TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   dt_changed TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
@@ -91,7 +92,7 @@ CREATE TABLE tables (
   fk_template    BIGINT    NOT NULL,
   name           TEXT      NOT NULL,
   shortid        TEXT      NOT NULL UNIQUE,
-  public         BIGINT    NOT NULL DEFAULT 0,
+  public         BOOLEAN   NOT NULL DEFAULT FALSE,
   games          BIGINT    NOT NULL DEFAULT 0,
   players        BIGINT    NOT NULL DEFAULT 0,
   status         TEXT      DEFAULT 'new',
@@ -163,7 +164,7 @@ CREATE TRIGGER a_update_row_timestamp BEFORE UPDATE ON tables    FOR EACH ROW EX
 CREATE TRIGGER a_update_row_timestamp BEFORE UPDATE ON templates FOR EACH ROW EXECUTE PROCEDURE update_row_timestamp();
 CREATE TRIGGER a_update_row_timestamp BEFORE UPDATE ON users     FOR EACH ROW EXECUTE PROCEDURE update_row_timestamp();
 
-INSERT INTO users (id, username, password) VALUES (1, 'admin', '0fb57789d87a97f7949ab902b3f2d8001acb6ddea7b4fc0b46a4681124245f4e');
+INSERT INTO users (id, username, password) VALUES (nextval('users_id_seq'), 'admin', '0fb57789d87a97f7949ab902b3f2d8001acb6ddea7b4fc0b46a4681124245f4e');
 
 INSERT INTO templates (fk_creator, name, opts, dt_created, dt_changed) VALUES (1, 'Tuhat', '{"sort": ["suite", "strength"], "suites": "DHSC", "redeal": {"reveal": true}, "trump": true, "lead": {"0": "bidder", "*": "trick"}, "talon": {"face": false}, "move": {"win": {"suite": true, "level": true}, "pass": false, "cards": 1, "crawl": 0, "response": {"suite": true}, "special": {"wheels": {"0": false, "*": [["AD", "0D"], ["AH", "0H"], ["AS", "0S"], ["AC", "0C"]], "condition": "trump"}, "trump": {"0": false, "*": [["KD", "QD"], ["KH", "QH"], ["KS", "QS"], ["KC", "QC"]]}}}, "reveal": true, "hand": 7, "trick": true, "players": [3, 4], "points": {"trick": {"A": 11, "K": 4, "J": 2, "Q": 3, "0": 10, "9": 0}, "bidonly": {"min": 900}, "wheels": 120, "trump": {"C": 100, "H": 60, "S": 80, "D": 40}, "penalties": {"blind": {"value": -2, "op": "mul"}, "nochange": {"op": "add", "value": -100, "times": 3}, "bid": {"value": -1, "op": "mul"}}}, "bidding": {"blind": true, "min": 60, "max": 340, "distribute": true, "aftermarket": true, "pass_final": true, "talon": true, "step": 5, "pass": true}, "pass": false, "cards": ["9D", "9H", "9S", "9C", "JD", "JH", "JS", "JC", "QD", "QH", "QS", "QC", "KD", "KH", "KS", "KC", "0D", "0H", "0S", "0C", "AD", "AH", "AS", "AC"], "strengths": "9JQK0A", "order": true, "complete": {"score": 1000}}', '2020-04-18 22:07:23.000000Z', '2020-05-03 18:01:29.635000Z');
 

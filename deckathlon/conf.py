@@ -5,7 +5,7 @@ supporting any JSON-serializable datatype, as well as Python literal eval.
 
 @author      Erki Suurjaak
 @created     18.04.2020
-@modified    08.05.2020
+@modified    11.05.2020
 """
 import os
 import sys
@@ -13,8 +13,8 @@ import sys
 """Program version."""
 Title = "Deckathlon"
 Name = "deckathlon"
-Version = "0.1.dev4"
-VersionDate = "08.05.2019"
+Version = "0.1.dev5"
+VersionDate = "11.05.2019"
 
 """Application code root path."""
 RootPath = ApplicationPath = os.path.dirname(os.path.abspath(__file__))

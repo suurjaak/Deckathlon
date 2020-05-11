@@ -172,31 +172,9 @@ def transaction(commit=True, **kwargs):
     return init().transaction(commit, **kwargs)
 
 
-class Database(object):
-    """Database instance."""
 
-    CACHE   = collections.OrderedDict() # {(engine name, opts json): Database}
-    ENGINES = None # {"sqlite": sqlite submodule, }
-
-
-    @classmethod
-    def factory(cls, engine, opts, **kwargs):
-        """
-        Returns a new or cached Database, or first created if opts is None.
-        """
-        key = next(iter(cls.CACHE)) if opts is None else (engine, json_dumps(opts))
-
-        if key in cls.CACHE: cls.CACHE[key].open()
-        else:
-            if cls.ENGINES is None:
-                basefile = os.path.realpath(__file__)
-                cls.ENGINES = load_modules(__package__, basefile)
-
-            db = cls.ENGINES[engine].Database(opts, **kwargs)
-            db.engine = cls.ENGINES[engine]
-            cls.CACHE[key] = db
-        return cls.CACHE[key]
-
+class Queryable(object):
+    """Abstract base for Database and Transaction."""
 
     def fetchall(self, table, cols="*", where=(), group=(), order=(), limit=(),
                  **kwargs):
@@ -271,6 +249,33 @@ class Database(object):
         raise NotImplementedError()
 
 
+
+class Database(Queryable):
+    """Database instance."""
+
+    CACHE   = collections.OrderedDict() # {(engine name, opts json): Database}
+    ENGINES = None # {"sqlite": sqlite submodule, }
+
+
+    @classmethod
+    def factory(cls, engine, opts, **kwargs):
+        """
+        Returns a new or cached Database, or first created if opts is None.
+        """
+        key = next(iter(cls.CACHE)) if opts is None else (engine, json_dumps(opts))
+
+        if key in cls.CACHE: cls.CACHE[key].open()
+        else:
+            if cls.ENGINES is None:
+                basefile = os.path.realpath(__file__)
+                cls.ENGINES = load_modules(__package__, basefile)
+
+            db = cls.ENGINES[engine].Database(opts, **kwargs)
+            db.engine = cls.ENGINES[engine]
+            cls.CACHE[key] = db
+        return cls.CACHE[key]
+
+
     def transaction(self, commit=True):
         """
         Returns a transaction context manager, breakable by raising Rollback,
@@ -291,17 +296,12 @@ class Database(object):
         raise NotImplementedError()
 
 
-    def makeSQL(self, action, table, cols='*', where=(), group=(), order=(),
-                limit=(), values=()):
-        """Returns (SQL statement string, parameter dict)."""
-        raise NotImplementedError()
 
-
-
-class Transaction(object):
+class Transaction(Queryable):
     """Transaction context manager, breakable by raising Rollback."""
 
     def __init__(self, db, commit=True, **kwargs):
+        super(Transaction, self).__init__()
         self._db, self._autocommit = db, commit
 
     def __enter__(self):
@@ -309,30 +309,6 @@ class Transaction(object):
 
     def __exit__(self, exc_type, exc_val, exc_trace):
         return exc_type in (None, Rollback) # Do not propagate raised Rollback
-
-    def fetchall(self, table, cols="*", where=(), group=(), order=(), limit=(), **kwargs):
-        return self._db.fetchall(table, cols, where, group, order, limit, **kwargs)
-
-    def fetchone(self, table, cols="*", where=(), group=(), order=(), limit=(), **kwargs):
-        return self._db.fetchone(table, cols, where, group, order, limit, **kwargs)
-
-    def insert(self, table, values=(), **kwargs):
-        return self._db.insert(table, values, **kwargs)
-
-    def select(self, table, cols="*", where=(), group=(), order=(), limit=(), **kwargs):
-        return self._db.select(table, cols, where, group, order, limit, **kwargs)
-
-    def update(self, table, values, where=(), **kwargs):
-        return self._db.update(table, values, where, **kwargs)
-
-    def delete(self, table, where=(), **kwargs):
-        return self._db.delete(table, where, **kwargs)
-
-    def execute(self, sql, args=None):
-        return self._db.execute(sql, args)
-
-    def executescript(self, sql):
-        return self._db.executescript(sql)
 
     def close(self, commit=True): raise NotImplementedError()
     def commit(self):             raise NotImplementedError()

@@ -78,205 +78,29 @@ from . import Database as DB, Rollback, Transaction as TX
 from . import json_dumps, json_loads
 
 
-
-# Recognized binary operators for makeSQL
-COL_OPS = ("!=", "!~", "!~*", "#", "%", "&", "*", "+", "-", "/", "<", "<<",
-           "<=", "<>", "<@", "=", ">", ">=", ">>", "@>", "^", "|", "||", "&&", "~",
-           "~*", "ANY", "ILIKE", "IN", "IS", "IS NOT", "LIKE", "NOT ILIKE", "NOT IN",
-           "NOT LIKE", "NOT SIMILAR TO", "OR", "OVERLAPS", "SIMILAR TO", "SOME")
-
 logger = logging.getLogger(__name__)
 
 
-class Database(DB):
-    """Convenience wrapper around psycopg2.ConnectionPool and Cursor."""
+class Queryable(object):
 
-    POOL   = {}  # {opts json: psycopg2.pool.ConnectionPool}
     TABLES = {}  # {opts json: table structure filled on first access}
     # {name: {key: "pk", fields: {col: {name, type, ?fk: "t2"}},
     #         ?parent: "t3", ?children: ("t4", ), ?type: "view"}}
 
+    # Recognized binary operators for makeSQL
+    OPS = ("!=", "!~", "!~*", "#", "%", "&", "*", "+", "-", "/", "<", "<<",
+            "<=", "<>", "<@", "=", ">", ">=", ">>", "@>", "^", "|", "||", "&&", "~",
+            "~*", "ANY", "ILIKE", "IN", "IS", "IS NOT", "LIKE", "NOT ILIKE", "NOT IN",
+            "NOT LIKE", "NOT SIMILAR TO", "OR", "OVERLAPS", "SIMILAR TO", "SOME")
 
-    @contextmanager
-    def _init(self, database=None, username=None, password=None,
-              host=None, port=None, minconn=1, maxconn=4, **kwargs):
-        """
-        Context manager for psycopg connection.
-        Acquires a connection from the pool and releases it when exiting context.
-        """
-        if self._key not in self.POOL: self.POOL[self._key] = \
-        psycopg2.pool.ThreadedConnectionPool(
-            minconn=minconn, maxconn=maxconn, dbname=database,
-            user=username, password=password, host=host, port=port,
-            cursor_factory=psycopg2.extras.RealDictCursor
-        )
-        return self.POOL[self._key]
-
-
-    @contextmanager
-    def get_cursor(self, commit=True, schema=None, lazy=False):
-        """
-        Context manager for psycopg connection cursor.
-        Creates a new cursor on an unused connection and closes it when exiting
-        context, committing changes if specified.
-
-        @param   commit  auto-commit at the end on success
-        @param   schema  name of Postgres schema to use, if not using default public
-        @param   lazy    if true, returns a named cursor that fetches rows
-                         iteratively; only supports making a single query
-        @return          psycopg2.extras.RealDictCursor
-        """
-
-        connection = self.POOL[self._key].getconn()
-        try:
-            cursor, namedcursor = None, None
-            if "public" == schema: schema = None # Default, no need to set
-
-            # If using schema, schema tables are queried first, fallback to public.
-            # Need two cursors if schema+lazy, as named cursor only does one query.
-            if schema or not lazy: cursor = connection.cursor()
-            if schema: cursor.execute('SET search_path TO "%s",public' % schema)
-            if lazy: namedcursor = connection.cursor("name_%s" % id(connection))
-
-            try:
-                yield namedcursor or cursor
-                if commit: connection.commit()
-            except StandardError:
-                logger.exception("SQL error on %s:", (namedcursor or cursor).query)
-                raise
-            finally:
-                connection.rollback() # If not already committed, must rollback here
-                try: namedcursor and namedcursor.close()
-                except StandardError: pass
-                if schema: # Restore default search path on this connection
-                    cursor.execute("SET search_path TO public")
-                    connection.commit()
-                if cursor: cursor.close()
-        finally: self.POOL[self._key].putconn(connection)
-
-
-
-    def __init__(self, opts, **kwargs):
-        """
-        Creates a new Postgres connection.
-
-        @param   opts     dict(database=None, username=None, password=None,
-                               host=None, port=None, cursor_factory=None,
-                               minconn=1, maxconn=4, 
-        """
-        self._key    = json_dumps(opts)
-        self._conn   = self._init(**opts)
-        self._cursor = None
-        self._cursorctx = self.get_cursor(commit=True)
-
-
-    def insert(self, table, values=(), **kwargs):
-        """
-        Convenience wrapper for database INSERT, returns inserted row ID.
-        Keyword arguments are added to VALUES.
-        """
-        values = list(values.items() if isinstance(values, dict) else values)
-        values += kwargs.items()
-        sql, args = self.makeSQL("INSERT", table, values=values)
-        return self.execute(sql, args).lastrowid
-
-
-    def execute(self, sql, args=()):
-        """
-        Executes SQL statement, returns psycopg cursor.
-
-        @param   args  dictionary for %(name)s placeholders,
-                       or a sequence for positional %s placeholders, or None
-        """
-        if not self._cursor: self._cursor = self._cursorctx.__enter__()
-        self._cursor.execute(sql, args or None)
-        return self._cursor
-
-
-    def executescript(self, sql):
-        """Executes the SQL as script of any number of statements."""
-        return self.execute(sql)
-
-
-    def close(self, commit=None):
-        """Closes the database connection."""
-        if self._cursor:
-            if commit is False: self._cursor.connection.rollback()
-            elif commit:        self._cursor.connection.commit()
-                
-            self._cursorctx.__exit__(None, None, None)
-            self._cursor = None
-        super(Database, self).close()
-
-
-    def init_tables(self):
-        """Returns database table structure."""
-        result = {}
-        with Transaction(self, schema="information_schema") as tx:
-            # Retrieve column names
-            for v in tx.fetchall("columns", table_schema="public",
-                                 order="table_name, dtd_identifier"):
-                t, c, d = v["table_name"], v["column_name"], v["data_type"]
-                if t not in result: result[t] = {"fields": OrderedDict()}
-                result[t]["fields"][c] = {"name": c, "type": d.lower()}
-
-            # Retrieve primary and foreign keys
-            for v in tx.fetchall(
-                "table_constraints tc JOIN key_column_usage kcu "
-                  "ON tc.constraint_name = kcu.constraint_name "
-                "JOIN constraint_column_usage ccu "
-                  "ON ccu.constraint_name = tc.constraint_name ",
-                cols="DISTINCT tc.table_name, kcu.column_name, tc.constraint_type, "
-                "ccu.table_name AS table_name2", where={"tc.table_schema": "public"}
-            ):
-                t, c, t2 = v["table_name"], v["column_name"], v["table_name2"]
-                if "PRIMARY KEY" == v["constraint_type"]: result[t]["key"] = c
-                else: result[t]["fields"][c]["fk"] = t2
-            # Retrieve inherited foreign key constraints implemented via triggers
-            rgx = r"EXECUTE PROCEDURE constrain_outref\('(.+)', '(.+)', '.+'\)"
-            for v in tx.fetchall("triggers", trigger_name=("ILIKE", "%constrain_outref")):
-                t, stmt = v["event_object_table"], v["action_statement"]
-                m = re.match(rgx, stmt, re.I)
-                if m: result[t]["fields"][m.group(1)]["fk"] = m.group(2)
-
-            # Retrieve inheritance information, copy foreign key flags from parent
-            for v in tx.fetchall(
-                "pg_inherits i JOIN pg_class c ON inhrelid=c.oid "
-                "JOIN pg_class p ON inhparent = p.oid "
-                "JOIN pg_namespace pn ON pn.oid = p.relnamespace "
-                "JOIN pg_namespace cn "
-                  "ON cn.oid = c.relnamespace AND cn.nspname = pn.nspname",
-                cols="c.relname AS child, p.relname AS parent",
-                where={"pn.nspname": "public"}
-            ):
-                result[v["parent"]].setdefault("children", []).append(v["child"])
-                result[v["child"]]["parent"] = v["parent"]
-                for f, opts in result[v["parent"]]["fields"].items():
-                    if not opts.get("fk"): continue # for f, opts
-                    result[v["child"]]["fields"][f]["fk"] = opts["fk"]
-
-            # Retrieve view column names
-            for v in tx.fetchall(
-                "pg_attribute a "
-                "JOIN pg_class c ON a.attrelid = c.oid "
-                "JOIN pg_namespace s ON c.relnamespace = s.oid "
-                "JOIN pg_type t ON a.atttypid = t.oid "
-                "JOIN pg_proc p ON t.typname = p.proname ",
-                cols="DISTINCT c.relname, a.attname, pg_get_function_result(p.oid) AS data_type",
-                where={"a.attnum": (">", 0), "a.attisdropped": False,
-                       "s.nspname": "public", "c.relkind": ("IN", ("v", "m"))}
-            ):
-                t, c, d = v["relname"], v["attname"], v["data_type"]
-                if t not in result: result[t] = {"fields": OrderedDict(), "type": "view"}
-                result[t]["fields"][c] = {"name": c, "type": d.lower()}
-        return result
 
 
     def makeSQL(self, action, table, cols="*", where=(), group=(), order=(),
                 limit=(), values=()):
         """Returns (SQL statement string, parameter dict)."""
-        TABLES = self.TABLES.get(self._key)
-        if TABLES is None: TABLES = self.TABLES[self._key] = self.init_tables()
+        key = self._key if isinstance(self, Database) else self._db._key
+        if key not in self.TABLES: self.init_tables(key)
+        TABLES = self.TABLES[key]
 
         def cast(col, val):
             """Returns column value cast to correct type for use in psycopg."""
@@ -298,7 +122,7 @@ class Database(DB):
             elif isinstance(val, (list, tuple)) and len(val) == 2 \
             and isinstance(val[0], basestring):
                 tmp = val[0].strip().upper()
-                if tmp in COL_OPS: # ("col", ("binary op like >=", val))
+                if tmp in self.OPS: # ("col", ("binary op like >=", val))
                     op, val = tmp, val[1]
                 elif val[0].count("?") == argcount(val[1]):
                     # ("col", ("SQL with ? placeholders", val))
@@ -315,7 +139,7 @@ class Database(DB):
         where  = [where] if isinstance(where, basestring) else where
         group  =   group if isinstance(group, basestring) else ", ".join(map(str, listify(group)))
         order  = [order] if isinstance(order, basestring) else order
-        limit  = [limit] if isinstance(limit, basestring + (int, )) else limit
+        limit  = [limit] if isinstance(limit, (basestring, int, long)) else limit
         values = values if not isinstance(values, dict) else values.items()
         where  =  where if not isinstance(where,  dict)  else where.items()
         sql = "SELECT %s FROM %s" % (cols, table) if "SELECT" == action else ""
@@ -375,7 +199,195 @@ class Database(DB):
         return sql, args
 
 
-class Transaction(TX):
+    def init_tables(self, key):
+        """Returns database table structure."""
+        result = self.TABLES[key] = {}
+
+        db = self if isinstance(self, DB) else self._db
+        with Transaction(db, schema="information_schema") as tx:
+            # Retrieve column names
+            for v in tx.fetchall("columns", table_schema="public",
+                                 order="table_name, dtd_identifier"):
+                t, c, d = v["table_name"], v["column_name"], v["data_type"]
+                if t not in result: result[t] = {"fields": OrderedDict()}
+                result[t]["fields"][c] = {"name": c, "type": d.lower()}
+
+            # Retrieve primary and foreign keys
+            for v in tx.fetchall(
+                "table_constraints tc JOIN key_column_usage kcu "
+                  "ON tc.constraint_name = kcu.constraint_name "
+                "JOIN constraint_column_usage ccu "
+                  "ON ccu.constraint_name = tc.constraint_name ",
+                cols="DISTINCT tc.table_name, kcu.column_name, tc.constraint_type, "
+                "ccu.table_name AS table_name2", where={"tc.table_schema": "public"}
+            ):
+                t, c, t2 = v["table_name"], v["column_name"], v["table_name2"]
+                if "PRIMARY KEY" == v["constraint_type"]: result[t]["key"] = c
+                else: result[t]["fields"][c]["fk"] = t2
+            # Retrieve inherited foreign key constraints implemented via triggers
+            rgx = r"EXECUTE PROCEDURE constrain_outref\('(.+)', '(.+)', '.+'\)"
+            for v in tx.fetchall("triggers", trigger_name=("ILIKE", "%constrain_outref")):
+                t, stmt = v["event_object_table"], v["action_statement"]
+                m = re.match(rgx, stmt, re.I)
+                if m: result[t]["fields"][m.group(1)]["fk"] = m.group(2)
+
+            # Retrieve inheritance information, copy foreign key flags from parent
+            for v in tx.fetchall(
+                "pg_inherits i JOIN pg_class c ON inhrelid=c.oid "
+                "JOIN pg_class p ON inhparent = p.oid "
+                "JOIN pg_namespace pn ON pn.oid = p.relnamespace "
+                "JOIN pg_namespace cn "
+                  "ON cn.oid = c.relnamespace AND cn.nspname = pn.nspname",
+                cols="c.relname AS child, p.relname AS parent",
+                where={"pn.nspname": "public"}
+            ):
+                result[v["parent"]].setdefault("children", []).append(v["child"])
+                result[v["child"]]["parent"] = v["parent"]
+                for f, opts in result[v["parent"]]["fields"].items():
+                    if not opts.get("fk"): continue # for f, opts
+                    result[v["child"]]["fields"][f]["fk"] = opts["fk"]
+
+            # Retrieve view column names
+            for v in tx.fetchall(
+                "pg_attribute a "
+                "JOIN pg_class c ON a.attrelid = c.oid "
+                "JOIN pg_namespace s ON c.relnamespace = s.oid "
+                "JOIN pg_type t ON a.atttypid = t.oid "
+                "JOIN pg_proc p ON t.typname = p.proname ",
+                cols="DISTINCT c.relname, a.attname, pg_get_function_result(p.oid) AS data_type",
+                where={"a.attnum": (">", 0), "a.attisdropped": False,
+                       "s.nspname": "public", "c.relkind": ("IN", ("v", "m"))}
+            ):
+                t, c, d = v["relname"], v["attname"], v["data_type"]
+                if t not in result: result[t] = {"fields": OrderedDict(), "type": "view"}
+                result[t]["fields"][c] = {"name": c, "type": d.lower()}
+        return result
+
+
+
+class Database(DB, Queryable):
+    """Convenience wrapper around psycopg2.ConnectionPool and Cursor."""
+
+    POOL   = {}  # {opts json: psycopg2.pool.ConnectionPool}
+
+
+    @classmethod
+    def init_pool(cls, key, database=None, username=None, password=None,
+              host=None, port=None, minconn=1, maxconn=4, **kwargs):
+        """
+        Context manager for psycopg connection.
+        Acquires a connection from the pool and releases it when exiting context.
+        """
+        if key not in cls.POOL: cls.POOL[key] = \
+        psycopg2.pool.ThreadedConnectionPool(
+            minconn=minconn, maxconn=maxconn, dbname=database,
+            user=username, password=password, host=host, port=port,
+            cursor_factory=psycopg2.extras.RealDictCursor
+        )
+
+
+    @contextmanager
+    def get_cursor(self, commit=True, schema=None, lazy=False):
+        """
+        Context manager for psycopg connection cursor.
+        Creates a new cursor on an unused connection and closes it when exiting
+        context, committing changes if specified.
+
+        @param   commit  auto-commit at the end on success
+        @param   schema  name of Postgres schema to use, if not using default public
+        @param   lazy    if true, returns a named cursor that fetches rows
+                         iteratively; only supports making a single query
+        @return          psycopg2.extras.RealDictCursor
+        """
+        connection = self.POOL[self._key].getconn()
+        try:
+            cursor, namedcursor = None, None
+            if "public" == schema: schema = None # Default, no need to set
+
+            # If using schema, schema tables are queried first, fallback to public.
+            # Need two cursors if schema+lazy, as named cursor only does one query.
+            if schema or not lazy: cursor = connection.cursor()
+            if schema: cursor.execute('SET search_path TO "%s",public' % schema)
+            if lazy: namedcursor = connection.cursor("name_%s" % id(connection))
+
+            try:
+                yield namedcursor or cursor
+                if commit: connection.commit()
+            except GeneratorExit: pass # Caller consumed nothing
+            except StandardError:
+                logger.exception("SQL error on %s:", (namedcursor or cursor).query)
+                raise
+            finally:
+                connection.rollback() # If not already committed, must rollback here
+                try: namedcursor and namedcursor.close()
+                except StandardError: pass
+                if schema: # Restore default search path on this connection
+                    cursor.execute("SET search_path TO public")
+                    connection.commit()
+                if cursor: cursor.close()
+        finally: self.POOL[self._key].putconn(connection)
+
+
+
+    def __init__(self, opts, **kwargs):
+        """
+        Creates a new Postgres connection.
+
+        @param   opts     dict(database=None, username=None, password=None,
+                               host=None, port=None, minconn=1, maxconn=4)
+        """
+        self._key = json_dumps(opts)
+        self.init_pool(self._key, **opts)
+        self._cursor = None
+        self._cursorctx = self.get_cursor(commit=True)
+
+
+    def insert(self, table, values=(), **kwargs):
+        """
+        Convenience wrapper for database INSERT, returns inserted row ID.
+        Keyword arguments are added to VALUES.
+        """
+        values = list(values.items() if isinstance(values, dict) else values)
+        values += kwargs.items()
+        sql, args = self.makeSQL("INSERT", table, values=values)
+        res = next(self.execute(sql, args))
+        return res.values()[0] if res and isinstance(res, dict) else None
+
+
+    def execute(self, sql, args=()):
+        """
+        Executes SQL statement, returns psycopg cursor.
+
+        @param   args  dictionary for %(name)s placeholders,
+                       or a sequence for positional %s placeholders, or None
+        """
+        if not self._cursorctx: self._cursorctx = self.get_cursor(commit=True)
+        if not self._cursor:    self._cursor = self._cursorctx.__enter__()
+        self._cursor.execute(sql, args or None)
+        return self._cursor
+
+
+    def executescript(self, sql):
+        """Executes the SQL as script of any number of statements."""
+        return self.execute(sql)
+
+
+    def open(self):
+        """Opens database connection if not already open."""
+        pass # Connection pool is always open
+
+
+    def close(self, commit=None):
+        """Closes the database connection."""
+        if self._cursor:
+            if commit is False: self._cursor.connection.rollback()
+            elif commit:        self._cursor.connection.commit()
+                
+            self._cursorctx.__exit__(None, None, None)
+            self._cursorctx = self._cursor = None
+
+
+class Transaction(TX, Queryable):
     """
     Transaction context manager, provides convenience methods for queries.
     Supports lazy cursors; those can only be used for making a single query.
@@ -390,7 +402,7 @@ class Transaction(TX):
         @param   lazy     if true, fetches results from server iteratively
                           instead of all at once, supports single query only
         """
-        super(Transaction, self).__init__(self, db, commit)
+        super(Transaction, self).__init__(db, commit)
         self._cursor = None
         self._cursorctx = db.get_cursor(commit, schema, lazy)
 
@@ -405,10 +417,6 @@ class Transaction(TX):
         self._cursor = None
         return exc_type in (None, Rollback)
 
-    def open(self):
-        """Opens database connection if not already open."""
-        pass # Connection pool is always open
-
     def close(self, commit=True):
         """
         Closes the transaction, performing commit or rollback as configured,
@@ -420,6 +428,32 @@ class Transaction(TX):
         if not self._cursor: return
         if commit and not self._autocommit: self.commit()
         self.__exit__(None, None, None)
+
+    def insert(self, table, values=(), **kwargs):
+        """
+        Convenience wrapper for database INSERT, returns inserted row ID.
+        Keyword arguments are added to VALUES.
+        """
+        values = list(values.items() if isinstance(values, dict) else values)
+        values += kwargs.items()
+        sql, args = self._db.makeSQL("INSERT", table, values=values)
+        res = next(self.execute(sql, args))
+        return res.values()[0] if res and isinstance(res, dict) else None
+
+    def execute(self, sql, args=()):
+        """
+        Executes SQL statement, returns psycopg cursor.
+
+        @param   args  dictionary for %(name)s placeholders,
+                       or a sequence for positional %s placeholders, or None
+        """
+        if not self._cursor: self._cursor = self._cursorctx.__enter__()
+        self._cursor.execute(sql, args or None)
+        return self._cursor
+
+    def executescript(self, sql):
+        """Executes the SQL as script of any number of statements."""
+        return self.execute(sql)
 
     def commit(self):
         """Commits current transaction, if any."""

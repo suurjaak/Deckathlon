@@ -26,10 +26,11 @@ def login(username, password):
     """Returns user data row if username and password are valid."""
     passhash = hashlib.pbkdf2_hmac("sha256", password, conf.SecretKey, 10000)
     where = {"username": username, "password": passhash.encode("hex")}
-    data = db.fetchone("users", where=where)
+    with db.transaction() as tx:
+        data = tx.fetchone("users", where=where)
 
-    if data: db.update("online", {"dt_online": util.utcnow(), "active": True},
-                       fk_user=data["id"], fk_table=None)
+        if data: tx.update("online", {"dt_online": util.utcnow(), "active": True},
+                           fk_user=data["id"], fk_table=None)
     return adapt(data, data and data["id"], "users")
 
 
@@ -43,11 +44,7 @@ def pagedata(request, page, userid=None, **kwargs):
         data, error, status = gaming.Table(userid).index()
 
     if "table" == page:
-        table = db.fetchone("tables", "id", shortid=kwargs["shortid"])
-        if table:
-            data, error, status = gaming.Table(userid).poll(table["id"])
-        else:
-            error, status = "Not found", httplib.NOT_FOUND
+        data, error, status = gaming.Table(userid).poll(shortid=kwargs["shortid"])
 
     if not error:
         root = request.app.get_url("/")
@@ -61,6 +58,7 @@ def pagedata(request, page, userid=None, **kwargs):
     if not error and userid:
         data["user"] = db.fetchone("users", id=userid)
 
+    db.close()
     return adapt(data, userid), error, status
 
 
@@ -89,13 +87,15 @@ def data_action(datatype, path, op, data, userid=None):
             username, password = (data[x].strip() for x in ("username", "password"))
             if not username or not password:
                 error, status = "Required data missing", httplib.BAD_REQUEST
-            if db.fetchone("users", "1", username=username):
-                error, status = "Username exists", httplib.CONFLICT
             else:
-                pw = hashlib.pbkdf2_hmac("sha256", password, conf.SecretKey, 10000)
-                userid = db.insert("users", username=username, password=pw.encode("hex"))
-                db.insert("online", fk_user=userid)
-                result = db.fetchone("users", id=userid)
+                with db.transaction() as tx:
+                    if tx.fetchone("users", "1", username=username):
+                        error, status = "Username exists", httplib.CONFLICT
+                    else:
+                        pw = hashlib.pbkdf2_hmac("sha256", password, conf.SecretKey, 10000)
+                        userid = tx.insert("users", username=username, password=pw.encode("hex"))
+                        tx.insert("online", fk_user=userid)
+                        result = tx.fetchone("users", id=userid)
 
     if "PUT" == op:
 
@@ -105,12 +105,7 @@ def data_action(datatype, path, op, data, userid=None):
     if "DELETE" == op:
 
         if "players" == datatype:
-            table = db.fetchone("tables", id=("EXPR", ("id IN (SELECT fk_table FROM players "
-                                              "WHERE id = ?)", [path])))
-            if table:
-                result, error, status = gaming.Table(userid).leave(table["id"], int(path))
-            else:
-                error, status = "Table not found", httplib.NOT_FOUND
+            result, error, status = gaming.Table(userid).leave(int(path))
 
     return adapt(result, userid, datatype), error, status
 
@@ -125,7 +120,7 @@ def poll(args, userid, tableid=None):
         dt_from += util.utcnow() - args["dt_now"]
 
     if tableid is not None:
-        result, error, status = gaming.Table(userid).poll(tableid, dt_from)
+        result, error, status = gaming.Table(userid).poll(tableid, dt_from=dt_from)
     else:
         result, error, status = gaming.Table(userid).poll_index(dt_from)
 
@@ -136,7 +131,8 @@ def update_offline():
     """Drops active-flag from all users with sufficient inactivity."""
     DELTA_OFFLINE = datetime.timedelta(seconds=conf.OfflineInterval)
     where = {"dt_online": ("<", util.utcnow() - DELTA_OFFLINE)}
-    db.update("online", {"active": False}, where=where)
+    with db.transaction() as tx:
+        tx.update("online", {"active": False}, where=where)
 
 
 def adapt(data, userid, datatype=None):
@@ -144,7 +140,6 @@ def adapt(data, userid, datatype=None):
     Processes data for UI. Retains only configured fields, drop fields 
     where drop=True, runs field adapters.
     """
-    db.close()
     if not data: return data
     result = data
 
