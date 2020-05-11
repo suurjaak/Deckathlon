@@ -4,7 +4,7 @@
  *
  * @author    Erki Suurjaak
  * @created   18.04.2020
- * @modified  08.05.2020
+ * @modified  11.05.2020
  */
 
 
@@ -594,6 +594,13 @@ var TEMPLATE_TABLE = `
                  class="card"></div>
           </div>
         </fieldset>
+
+        <fieldset v-if="game.discards.length" class="discards">
+          <legend>{{ _("Discard pile") }}</legend>
+          <div class="cards" v-bind:title="_('Show last discards')" v-on:click="onShowDiscards">
+            <div v-for="_ in game.discards" v-html="Cardery.tag(' ')" class="card"></div>
+          </div>
+        </fieldset>
       </div>
 
 
@@ -980,9 +987,10 @@ Vue.component("page_table", {
       if ("talon" == name && self.game) {
         result = ("ended" == self.game.status) ? self.game.talon0 : self.game.talon;
       } else if ("hand" == name && self.game) {
-        if (a && self.player && a.id == self.player.id)
-          result = ("ended" == self.game.status) ? a.hand0 : self.hand;
-        else result = ("ended" == self.game.status) ? a.hand0 : a.hand;
+        if ("ended" == self.game.status && Util.get(self.template, "opts", "reveal")) {
+          result = a.hand0;
+        } else if (self.player && a.id == self.player.id) result = self.hand;
+        else result = a.hand;
       } else if ("scores" == name && self.table) {
         result = self.table.scores_history;
         if (!Util.isEmpty(self.table.scores)) result = result.concat([self.table.scores]);
@@ -1393,6 +1401,25 @@ Vue.component("page_table", {
         ).outerHTML;
       }).join("");
       AppActions.dialog(text, {html: cards});
+    },
+
+
+    /** Shows last discards. */
+    onShowDiscards: function() {
+      var self = this;
+      var discard = Util.get(self.game, "discards", -1);
+      if (!discard) return;
+
+      var cards = discard.map(function(move) {
+        if (!move.cards) return "";
+        return Util.createElement("div", {"class": "move"}, [
+          Util.createElement("div", {"class": "name"}, _(self.getName(move))),
+          Util.createElement("div", {"class": "cards"}, move.cards.map(function(card) {
+            return Util.createElement("div", {"class": "card"}, Cardery.tag(card, true));
+          }))
+        ]).outerHTML;
+      }).join("");
+      AppActions.dialog(_("Last discards:"), {html: Util.createElement("div", {"class": "discard"}, cards).outerHTML});
     },
 
 

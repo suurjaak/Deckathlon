@@ -4,7 +4,7 @@
  *
  * @author    Erki Suurjaak
  * @created   01.03.2015
- * @modified  24.04.2020
+ * @modified  11.05.2020
  */
 "use strict";
 
@@ -167,6 +167,7 @@ var Util = new function() {
    * Returns the value of the specified collection path, or undefined if not present.
    * Collection can be a nested structure of dicts, arrays or strings.
    * E.g. Util.get({"root": {"first": [{"k": "v"}]}}, "root", "first", 0, "k").
+   * Supports negative indexes for arrays and strings.
    */
   self.get = function(collection, path/*, path, .. */) {
     var result = (undefined !== path) ? collection : undefined;
@@ -175,9 +176,10 @@ var Util = new function() {
 
     for (var i = 0; i < path.length; i++) {
       var p = path[i];
-      if ((Array.isArray(result) || self.isString(result)) && typeof(p) === "number" && !isNaN(p))
+      if ((Array.isArray(result) || self.isString(result)) && typeof(p) === "number" && !isNaN(p)) {
+        if (p < 0) p = result.length + p;
         result = result[p];
-      else if (result && "object" === typeof(result))
+      } else if (result && "object" === typeof(result))
         result = result[p];
       else
         result = undefined;
@@ -953,7 +955,8 @@ var Util = new function() {
     if (html) {
       if (Util.isString(html)) result.innerHTML = html;
       else if (Array.isArray(html)) html.forEach(function(x) {
-        result.append(x, document.createTextNode(" "));
+        if (Util.isString(x)) result.append(x, document.createTextNode(" "));
+        else result.append(x);
       }); else result.append(html);
     };
     Object.keys(attr || {}).forEach(function(x) {

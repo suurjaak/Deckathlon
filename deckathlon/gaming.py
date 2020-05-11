@@ -147,10 +147,10 @@ class Table(object):
         """
         result, error, status = None, None, httplib.OK
 
-        table = self._tx.fetchone("tables", where=(
+        table = self._tx.fetchone("tables", where=("EXPR", (
             "id IN (SELECT fk_table FROM players WHERE id = ? AND fk_user = ?)",
             [playerid, self._userid]
-        ))
+        )))
 
         playeruserid = None
         if not table:
@@ -263,10 +263,10 @@ class Table(object):
         """
         result, error, status = {}, None, httplib.OK
 
-        where = {"(public = ? OR fk_host = ? or id in "
+        where = {"EXPR": ("(public = ? OR fk_host = ? or id in "
                  "(SELECT fk_table FROM table_users WHERE fk_table = tables.id "
-                 "AND fk_user = ? AND dt_deleted IS NULL))":
-                 [True, self._userid, self._userid]}
+                 "AND fk_user = ? AND dt_deleted IS NULL))",
+                 [True, self._userid, self._userid])}
         if dt_from: where["dt_changed"] = (">=", dt_from)
         result["tables"] = self._tx.fetchall("tables", where=where)
 
@@ -864,7 +864,7 @@ class Table(object):
             and has_allofakind(template, gchanges["trick"]):
                 # Trick ends with all of a kind
                 round_over = True
-            elif do_pass and not util.get(template, "opts", "trick") \
+            elif not util.get(template, "opts", "trick") \
             and util.get(template, "opts", "move", "win", "last") \
             and len(playerids_ingame - playerids_passed - set([playerid_lastmove])) < 1:
                 # All except one have passed or played their last
@@ -942,8 +942,8 @@ class Table(object):
         if player and not self._player:
             self._player = next((x for x in self._players if x["fk_user"] == self._userid), None)
         if users and not self._users:
-            where = {"id IN (SELECT fk_user FROM table_users "
-                     "WHERE fk_table = ?)": [self._table["id"]]}
+            where = {"EXPR": ("id IN (SELECT fk_user FROM table_users "
+                     "WHERE fk_table = ?)", [self._table["id"]])}
             self._users = self._tx.fetchall("users", where=where)
 
         if template: result.append(self._template)
@@ -992,9 +992,10 @@ class Table(object):
                          util.recursive_decode(value[-1:], [hider])
                 faceup = True
 
-        if faceup is None and game and game["status"] == "ended":
-            # Reveal everything at game end
-            faceup = util.get(template["opts"], "reveal")
+        if faceup is None and field in ("tricks", "discards"):
+            # Render only last trick and last discard visible
+            result = util.recursive_decode(value[:-1], [hider]) + value[-1:]
+            faceup = True
 
         if faceup is None and is_player and game \
         and game["status"] == "bidding" and player["status"] == "blind":
@@ -1011,18 +1012,17 @@ class Table(object):
             # Reveal player's own hand to player, if not blind
             faceup = True
 
-        if faceup is None and field in ("talon", "talon0"):
-            # Reveal talon according to game template
-            faceup = util.get(template["opts"], "talon", "face")
-
-        if faceup is None and field in ("tricks", "discards"):
-            # Render only last trick and last discard visible
-            result = util.recursive_decode(value[:-1], [hider]) + value[-1:]
-            faceup = True
-
         if faceup is None and field == "moves":
             # Moves are always hidden by default
             faceup = False
+
+        if faceup is None and game and game["status"] == "ended":
+            # Reveal everything at game end
+            faceup = util.get(template["opts"], "reveal")
+
+        if faceup is None and field in ("talon", "talon0"):
+            # Reveal talon according to game template
+            faceup = util.get(template["opts"], "talon", "face")
 
         if not faceup:
             result = util.recursive_decode(value, [hider])

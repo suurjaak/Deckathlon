@@ -193,6 +193,15 @@ msgstr "Mängija '{0}' viimane tihi"
 msgid  "Player '{0}' trick #{1}:"
 msgstr "Mängija '{0}' tihi #{1}:"
 
+msgid  "Discard pile"
+msgstr "Mahaläinud kaardid"
+
+msgid  "Show last discards"
+msgstr "Näita viimasena mahaläinud kaarte"
+
+msgid  "Last discards:"
+msgstr "Viimasena mahaläinud kaardid:"
+
 msgid  "Kick out"
 msgstr "Viska lauast välja"
 
@@ -283,7 +292,7 @@ msgstr "Pole mängija kord"
 msgid  "Move missing data"
 msgstr "Vigane käik"
 
-msgid  "Can not pass"
+msgid  "Cannot pass"
 msgstr "Ei saa passida"
 
 msgid  "Cannot crawl if you have a top card"
@@ -340,3 +349,5 @@ msgstr "Vale arv kaarte"
 msgid  "Not trump card"
 msgstr "Pole trumbi kaart"
 
+msgid  "Not the right move"
+msgstr "Pole õige käik"

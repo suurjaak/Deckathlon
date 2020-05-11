@@ -3,7 +3,7 @@
  *
  * @author    Erki Suurjaak
  * @created   18.04.2020
- * @modified  04.05.2020
+ * @modified  11.05.2020
  */
 
 body {
@@ -574,13 +574,11 @@ div.tabletop div.moves div.trick div.stack {
   opacity:         0.5;
   overflow:        hidden;
   white-space:     nowrap;
-  width:           50pt;
 }
 #appdialog div.html div.move div.special {
   font-size:       0.8em;
   text-align:      center;
   opacity:         0.5;
-  width:           50pt;
   position:        unset;
 }
 
@@ -639,6 +637,7 @@ div.table div.scores thead tr:first-child th {
 
 
 /** Tricks stack styling. */
+div.table div.player fieldset.discards,
 div.table div.player fieldset.tricks {
   border:           1px solid white;
   border-radius:    1pt;
@@ -647,31 +646,52 @@ div.table div.player fieldset.tricks {
   position:         relative;
   top:              10pt;
 }
+div.table div.player fieldset.discards > legend,
 div.table div.player fieldset.tricks > legend {
   color:            white;
   font-size:        10pt;
   text-align:       left;
 }
+div.table div.player div.discards,
 div.table div.player div.tricks {
   display:          flex;
   justify-content:  flex-end;
 }
+div.table div.player.me fieldset.discards,
 div.table div.player.me fieldset.tricks {
   position:         absolute;
   top:              4.5pt;
   left:             0;
 }
+div.table div.player .discards div.card {
+  width:            6pt;
+}
+div.table div.player .discards div.card:last-child {
+  width:            29pt;
+}
+div.table div.player .discards div.card,
 div.table div.player .tricks div.card {
   cursor:           pointer;
 }
 #table div.dialog div.html {
   padding-bottom:   10pt;
 }
+#table div.dialog div.html .discard {
+  display:          flex;
+  flex-wrap:        wrap;
+}
+#table div.dialog div.html .discard > .move {
+  padding-right:    5pt;
+}
+#table div.dialog div.html .discard > .move:last-child {
+  padding-right:    0;
+}
 body.table div.table div.player.pos2of4 fieldset.tricks {
   position:         absolute;
   left:             0;
   top:              4.5pt;
 }
+div.table div.player.pos1of3 div.discards,
 div.table div.player.pos1of3 div.tricks,
 div.table div.player.pos1of4 div.tricks {
   justify-content:  flex-start;
