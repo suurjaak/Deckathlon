@@ -4,7 +4,7 @@ Data facade.
 
 @author    Erki Suurjaak
 @created   17.04.2020
-@modified  02.05.2020
+@modified  13.05.2020
 ------------------------------------------------------------------------------
 """
 import datetime
@@ -18,8 +18,6 @@ from . import gaming
 from . lib import db, util
 
 logger = logging.getLogger(__name__)
-
-DB_SCHEMA = {} # {type: {opts}}
 
 
 def login(username, password):
@@ -77,11 +75,14 @@ def data_action(datatype, path, op, data, userid=None):
         if "actions" == datatype:
             result, error, status = gaming.Table(userid).action(data)
 
-        if "tables" == datatype:
-            result, error, status = gaming.Table(userid).create(data)
-
         if "players" == datatype:
             result, error, status = gaming.Table(userid).join(data["fk_table"])
+
+        if "requests" == datatype:
+            result, error, status = gaming.Table(userid).request(data)
+
+        if "tables" == datatype:
+            result, error, status = gaming.Table(userid).create(data)
 
         if "users" == datatype:
             username, password = (data[x].strip() for x in ("username", "password"))
@@ -96,8 +97,15 @@ def data_action(datatype, path, op, data, userid=None):
                         userid = tx.insert("users", username=username, password=pw.encode("hex"))
                         tx.insert("online", fk_user=userid)
                         result = tx.fetchone("users", id=userid)
+                        logger.info("Registered user '%s'.", username)
 
     if "PUT" == op:
+
+        if "players" == datatype:
+            result, error, status = gaming.Table(userid).update_player(int(path), data)
+
+        if "requests" == datatype:
+            result, error, status = gaming.Table(userid).request_response(int(path), data)
 
         if "tables" == datatype:
             result, error, status = gaming.Table(userid).update(int(path), data)
@@ -105,7 +113,7 @@ def data_action(datatype, path, op, data, userid=None):
     if "DELETE" == op:
 
         if "players" == datatype:
-            result, error, status = gaming.Table(userid).leave(int(path))
+            result, error, status = gaming.Table(userid).remove_player(int(path))
 
     return adapt(result, userid, datatype), error, status
 
@@ -130,7 +138,7 @@ def poll(args, userid, tableid=None):
 def update_offline():
     """Drops active-flag from all users with sufficient inactivity."""
     DELTA_OFFLINE = datetime.timedelta(seconds=conf.OfflineInterval)
-    where = {"dt_online": ("<", util.utcnow() - DELTA_OFFLINE)}
+    where = {"active": True, "dt_online": ("<", util.utcnow() - DELTA_OFFLINE)}
     with db.transaction() as tx:
         tx.update("online", {"active": False}, where=where)
 

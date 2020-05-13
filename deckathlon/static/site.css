@@ -3,7 +3,7 @@
  *
  * @author    Erki Suurjaak
  * @created   18.04.2020
- * @modified  11.05.2020
+ * @modified  13.05.2020
  */
 
 body {
@@ -105,9 +105,6 @@ body.table div#main > div {
 button.menu {
   padding:          0 3pt 1.5pt 3pt;
 }
-#appdialog div.slot {
-  padding-bottom: 10pt;
-}
 
 
 /** Popup dialog styling. */
@@ -134,28 +131,46 @@ button.menu {
 #appdialog div.dialog {
   background:       white;
   color:            black;
-  border:           1px solid #5C5C5C;
-  box-shadow:       0 5px 15px rgba(0, 0, 0, 0.5);
+  border:           1pt solid #5C5C5C;
+  box-shadow:       0 5pt 15pt rgba(0, 0, 0, 0.5);
   display:          flex;
   flex-direction:   column;
   justify-content:  space-between;
-  max-width:        400px;
+  max-width:        300pt;
   opacity:          1;
   padding:          0 10pt;
   text-align:       center;
   z-index:          10001;
 }
 #appdialog div.content {
-  max-height:       400px;
+  max-height:       300pt;
   overflow:         auto;
-  padding:          20px 20px 15px 20px;
+  padding:          0 0 10pt 0;
   white-space:      pre-line;
 }
 #appdialog div.buttons {
-  padding:          0px 20px 20px 20px;
+  padding:          10pt;
   white-space:      nowrap;
 }
-
+#appdialog input[type=text] {
+  width:            unset;
+}
+#appdialog label {
+  font-size:        0.8em;
+}
+#appdialog select {
+  min-width:        unset;
+  width:            unset;
+}
+body.index #appdialog select {
+  width:            100%;
+}
+#appdialog td + td {
+  padding-left:     5pt;
+}
+#appdialog div.bottom {
+  padding-top:      10pt;
+}
 
 
 /** Index page styling. */
@@ -177,6 +192,22 @@ button.menu {
 #index table.tables th:last-child,
 #index table.tables td:last-child {
   text-align:       right;
+}
+#index table.tables td:first-child,
+#index table.tables td:last-child {
+  position:         relative;
+}
+#index table.tables td span.tag {
+  font-size:        0.8em;
+  opacity:          0.8;
+  position:         absolute;
+  top:              1pt;
+  right:            -10pt;
+}
+#index table.tables td:first-child span.tag {
+  color:            white;
+  left:             -10pt;
+  right:            unset;
 }
 #index table.new {
   text-align:       left;
@@ -557,17 +588,20 @@ div.tabletop div.moves div.trick div.stack {
 
 
 /** Trick history popup styling. */
+#appdialog div.dom,
 #appdialog div.html {
   display:         flex;
   align-items:     flex-start;
   justify-content: center;
 }
+#appdialog div.dom div.move,
 #appdialog div.html div.move {
   display:         flex;
   flex-direction:  column;
   justify-content: center;
   position:        relative;
 }
+#appdialog div.dom div.move div.name,
 #appdialog div.html div.move div.name {
   font-size:       0.8em;
   text-align:      center;
@@ -575,11 +609,24 @@ div.tabletop div.moves div.trick div.stack {
   overflow:        hidden;
   white-space:     nowrap;
 }
+#appdialog div.dom div.move div.special,
 #appdialog div.html div.move div.special {
   font-size:       0.8em;
   text-align:      center;
   opacity:         0.5;
   position:        unset;
+  width:           unset;
+}
+#appdialog div.dom div.prev,
+#appdialog div.dom div.next {
+  align-self:       flex-end;
+  min-width:        24pt;
+}
+#appdialog div.dom div.prev {
+  padding-right:    5pt;
+}
+#appdialog div.dom div.next {
+  padding-left:     5pt;
 }
 
 
@@ -637,8 +684,8 @@ div.table div.scores thead tr:first-child th {
 
 
 /** Tricks stack styling. */
-div.table div.player fieldset.discards,
-div.table div.player fieldset.tricks {
+#table div.player fieldset.discards,
+#table div.player fieldset.tricks {
   border:           1px solid white;
   border-radius:    1pt;
   display:          inline-block;
@@ -646,59 +693,83 @@ div.table div.player fieldset.tricks {
   position:         relative;
   top:              10pt;
 }
-div.table div.player fieldset.discards > legend,
-div.table div.player fieldset.tricks > legend {
+#table div.player fieldset.discards > legend,
+#table div.player fieldset.tricks > legend {
   color:            white;
   font-size:        10pt;
   text-align:       left;
 }
-div.table div.player div.discards,
-div.table div.player div.tricks {
+#table div.player div.discards,
+#table div.player div.tricks {
   display:          flex;
   justify-content:  flex-end;
 }
-div.table div.player.me fieldset.discards,
-div.table div.player.me fieldset.tricks {
+#table div.player.pos2of2 fieldset.discards,
+#table div.player.pos2of2 fieldset.tricks,
+#table div.player.pos3of3 fieldset.discards,
+#table div.player.pos3of3 fieldset.tricks,
+#table div.player.pos4of4 fieldset.discards,
+#table div.player.pos4of4 fieldset.tricks,
+#table div.player.pos5of5 fieldset.discards,
+#table div.player.pos5of5 fieldset.tricks,
+#table div.player.pos6of6 fieldset.discards,
+#table div.player.pos6of6 fieldset.tricks,
+#table div.player.pos7of7 fieldset.discards,
+#table div.player.pos7of7 fieldset.tricks,
+#table div.player.pos8of8 fieldset.discards,
+#table div.player.pos8of8 fieldset.tricks,
+#table div.player.me fieldset.discards,
+#table div.player.me fieldset.tricks {
   position:         absolute;
   top:              4.5pt;
   left:             0;
 }
-div.table div.player .discards div.card {
+#table div.player .discards div.card {
   width:            6pt;
 }
-div.table div.player .discards div.card:last-child {
+#table div.player .discards div.card:last-child {
   width:            29pt;
 }
-div.table div.player .discards div.card,
-div.table div.player .tricks div.card {
+#table div.player .discards div.card,
+#table div.player .tricks div.card {
   cursor:           pointer;
 }
+#table div.dialog div.dom,
 #table div.dialog div.html {
   padding-bottom:   10pt;
 }
-#table div.dialog div.html .discard {
+#table div.dialog div.dom .discard,
+#table div.dialog div.dom .trick {
   display:          flex;
+  justify-content:  space-between;
+  min-width:        300pt;
+  width:            100%;
+}
+#table div.dialog div.dom .moves {
+  display:          flex;
+  align-items:      flex-start;
+  justify-content:  center;
   flex-wrap:        wrap;
 }
-#table div.dialog div.html .discard > .move {
+#table div.dialog div.dom .move {
   padding-right:    5pt;
 }
-#table div.dialog div.html .discard > .move:last-child {
+#table div.dialog div.dom .move:last-child {
   padding-right:    0;
 }
-body.table div.table div.player.pos2of4 fieldset.tricks {
+#table div.player.pos2of4 fieldset.tricks {
   position:         absolute;
   left:             0;
   top:              4.5pt;
 }
-div.table div.player.pos1of3 div.discards,
-div.table div.player.pos1of3 div.tricks,
-div.table div.player.pos1of4 div.tricks {
+#table div.player.pos1of3 div.discards,
+#table div.player.pos1of3 div.tricks,
+#table div.player.pos1of4 div.tricks {
   justify-content:  flex-start;
 }
 
-div.table div.player.pos2of3 div.tricks,
-div.table div.player.pos3of4 div.tricks {
+#table div.player.pos2of3 div.tricks,
+#table div.player.pos3of4 div.tricks {
   justify-content:  flex-end;
 }
 
@@ -901,10 +972,10 @@ div.tabletop div.gameover table.score .bid {
   justify-content:  flex-start;
 }
 #footer > div > * + * {
-  padding-left:     13pt;
+  margin-left:     13pt;
 }
 #footer > div > * > * + * {
-  padding-left:     5pt;
+  margin-left:     5pt;
 }
 #header a,
 #footer a {

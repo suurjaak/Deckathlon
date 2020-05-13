@@ -96,10 +96,19 @@ from . import json_dumps, json_loads, parse_datetime
 
 class Queryable(QQ):
 
+    OPS = ["||", "*", "/", "%", "+", "-", "<<", ">>", "&", "|", "<", "<=", ">",
+           ">=", "=", "==", "!=", "<>", "IS", "IS NOT", "IN", "NOT IN", "LIKE",
+           "GLOB", "MATCH", "REGEXP", "AND", "OR"]
+
 
     def makeSQL(self, action, table, cols="*", where=(), group=(), order=(),
                 limit=(), values=()):
         """Returns (SQL statement string, parameter dict)."""
+
+        def cast(col, val):
+            """Returns column value cast to correct type for use in sqlite."""
+            return tuple(val) if isinstance(val, set) else val
+
         action = action.upper()
         cols   =    cols if isinstance(cols,  basestring) else ", ".join(cols)
         group  =   group if isinstance(group, basestring) else ", ".join(group)
@@ -128,22 +137,25 @@ class Queryable(QQ):
             for i, (col, val) in enumerate(where):
                 key = "%sW%s" % (re.sub("\\W+", "_", col), i)
                 dbval = val[-1] if isinstance(val, (list, tuple)) else val
-                op = ("IS" if dbval == val else val[0]).upper()
+                op = ("IS" if dbval == val else val[0])
+                if op.upper() in self.OPS: op = op.upper()
                 op = "=" if dbval is not None and "IS" == op else op
+                op = "IS" if dbval is None and "=" == op else op
+                op = "IS NOT" if dbval is None and "!=" == op else op
                 if "EXPR" == col.upper(): op, col = col.upper(), op
                 if op in ("IN", "NOT IN"):
                     keys = ["%s_%s" % (key, j) for j in range(len(dbval))]
-                    args.update(zip(keys, dbval))
+                    args.update({k: cast(col, v) for k, v in zip(keys, dbval)})
                     sql += (" AND " if i else "") + "%s %s (%s)" % (
                             col, op, ", ".join(":" + x for x in keys))
                 elif "EXPR" == op:
                     key = "EXPRW%s" % i # Expression can be ridiculously long
                     for j, v in enumerate(dbval):
                         col = col.replace("?", ":%s_%s" % (key, j), 1)
-                        args["%s_%s" % (key, j)] = v
+                        args["%s_%s" % (key, j)] = cast(col, v)
                     sql += (" AND " if i else "") + col
                 else:
-                    args[key] = dbval
+                    args[key] = cast(col, dbval)
                     sql += (" AND " if i else "") + "%s %s :%s" % (col, op, key)
         if group:
             sql += " GROUP BY " + group

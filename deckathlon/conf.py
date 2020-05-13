@@ -5,7 +5,7 @@ supporting any JSON-serializable datatype, as well as Python literal eval.
 
 @author      Erki Suurjaak
 @created     18.04.2020
-@modified    11.05.2020
+@modified    13.05.2020
 """
 import os
 import sys
@@ -13,8 +13,8 @@ import sys
 """Program version."""
 Title = "Deckathlon"
 Name = "deckathlon"
-Version = "0.1.dev6"
-VersionDate = "11.05.2019"
+Version = "0.1.dev10"
+VersionDate = "13.05.2019"
 
 """Application code root path."""
 RootPath = ApplicationPath = os.path.dirname(os.path.abspath(__file__))
@@ -155,6 +155,7 @@ DbSchema = {
             "name":           {},
             "shortid":        {},
             "public":         {},
+            "opts":           {},
             "sequence":       {},
             "status":         {},
             "games":          {},
@@ -164,6 +165,7 @@ DbSchema = {
             "scores":         {},
             "bids_history":   {},
             "scores_history": {},
+            "users":          {},
             "dt_created":     {},
             "dt_changed":     {},
         },
@@ -187,7 +189,7 @@ DbSchema = {
             "bid":         {},
             "tricks":      {},
             "trick":       {},
-            "moves":       {},
+            "moves":       {"drop": True},
             "discards":    {},
             "score":       {},
             "dt_created":  {},
@@ -209,7 +211,7 @@ DbSchema = {
             "expected":    {},
             "hand":        {},
             "hand0":       {},
-            "moves":       {},
+            "moves":       {"drop": True},
             "tricks":      {},
             "dt_created":  {},
             "dt_changed":  {},
@@ -235,6 +237,19 @@ DbSchema = {
             "fk_table":    {"fk": "tables"},
             "active":      {},
             "dt_online":   {},
+        },
+    },
+
+    "requests": {
+        "key":     "id",
+        "fields":  {
+            "id":          {},
+            "fk_user":     {"fk": "users"},
+            "fk_table":    {"fk": "tables"},
+            "fk_game":     {"fk": "games"},
+            "type":        {},
+            "status":      {},
+            "opts":        {},
         },
     },
 

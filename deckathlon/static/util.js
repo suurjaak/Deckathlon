@@ -957,7 +957,7 @@ var Util = new function() {
       else if (Array.isArray(html)) html.forEach(function(x) {
         if (Util.isString(x)) result.append(x, document.createTextNode(" "));
         else result.append(x);
-      }); else result.append(html);
+      }); else if (html != null) result.append(html);
     };
     Object.keys(attr || {}).forEach(function(x) {
       if (x.startsWith("on")) result[x] = attr[x];

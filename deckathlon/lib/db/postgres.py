@@ -89,9 +89,9 @@ class Queryable(object):
 
     # Recognized binary operators for makeSQL
     OPS = ("!=", "!~", "!~*", "#", "%", "&", "*", "+", "-", "/", "<", "<<",
-            "<=", "<>", "<@", "=", ">", ">=", ">>", "@>", "^", "|", "||", "&&", "~",
-            "~*", "ANY", "ILIKE", "IN", "IS", "IS NOT", "LIKE", "NOT ILIKE", "NOT IN",
-            "NOT LIKE", "NOT SIMILAR TO", "OR", "OVERLAPS", "SIMILAR TO", "SOME")
+           "<=", "<>", "<@", "=", ">", ">=", ">>", "@>", "^", "|", "||", "&&", "~",
+           "~*", "ANY", "ILIKE", "IN", "IS", "IS NOT", "LIKE", "NOT ILIKE", "NOT IN",
+           "NOT LIKE", "NOT SIMILAR TO", "OR", "OVERLAPS", "SIMILAR TO", "SOME")
 
 
 
@@ -116,7 +116,9 @@ class Queryable(object):
         def parse_members(i, col, op, val):
             """Returns (col, op, val, argkey)."""
             key = "%sW%s" % (re.sub("\\W+", "_", col), i)
-            if col.count("?") == argcount(val):
+            if "EXPR" == col.upper():
+                col, op, val, key = val[0], "EXPR", val[1], "EXPRW%s" % i
+            elif col.count("?") == argcount(val):
                 # ("any SQL with ? placeholders", val)
                 op, val, key = "EXPR", listify(val), "EXPRW%s" % i
             elif isinstance(val, (list, tuple)) and len(val) == 2 \

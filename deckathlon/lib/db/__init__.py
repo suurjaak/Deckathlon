@@ -2,7 +2,7 @@
 """
 Simple convenience wrapper for database operations.
 
-    db.init( @todo )
+    # db.init("sqlite path" or {..postgres opts..})
     db.execute("CREATE TABLE test (id INTEGER PRIMARY KEY, val TEXT)")
     db.insert("test", val=None)
     for i in range(5): db.insert("test", {"val": i})
@@ -73,7 +73,7 @@ can be used by keeping a reference to the connection:
 
 @author      Erki Suurjaak
 @created     05.03.2014
-@modified    07.05.2020
+@modified    13.05.2020
 """
 import collections
 import base64
@@ -371,14 +371,14 @@ def encode_b64_mime(buf):
 def parse_datetime(s):
     """
     Tries to parse string as ISO8601 datetime, returns input on error.
-    Supports "YYYY-MM-DD[ T]HH:MM:SS(.micros)?(Z|[+-]HH:MM)?".
+    Supports "YYYY-MM-DD[ T]HH:MM:SS(.micros)?(Z|[+-]HH(:MM)?)?".
     All returned datetimes are timezone-aware, falling back to UTC.
     """
     if len(s) < 18: return s
-    rgx = r"^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(\.\d+)?(([+-]\d{2}:?\d{2})|Z)?$"
+    rgx = r"^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(\.\d+)?(([+-]\d{2}(:?\d{2})?)|Z)?$"
     result, match = s, re.match(rgx, s)
     if match:
-        millis, _, offset = match.groups()
+        millis, _, offset, _ = match.groups()
         minimal = re.sub(r"\D", "", s[:match.span(2)[0]] if offset else s)
         fmt = "%Y%m%d%H%M%S" + ("%f" if millis else "")
         try:

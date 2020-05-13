@@ -49,6 +49,12 @@ msgstr "Mäng"
 msgid  "Host"
 msgstr "Omanik"
 
+msgid  "User"
+msgstr "Kasutaja"
+
+msgid  "Player"
+msgstr "Mängija"
+
 msgid  "Players"
 msgstr "Mängijad"
 
@@ -59,7 +65,7 @@ msgid  "Join private table"
 msgstr "Liitu privaatlauaga"
 
 msgid  "Table short ID"
-msgstr "Laua identifikaator"
+msgstr "Laua lühinimi"
 
 msgid  "Table name"
 msgstr "Laua nimi"
@@ -69,6 +75,9 @@ msgstr "Mäng"
 
 msgid  "Public"
 msgstr "Kõigile nähtav"
+
+msgid  "Joinable"
+msgstr "Liitumiseks avatud"
 
 msgid  "Index"
 msgstr "Nimekiri"
@@ -112,6 +121,9 @@ msgstr "Paku"
 msgid  "Deal cards"
 msgstr "Jaga kaardid"
 
+msgid  "Deal cards and start a new game?"
+msgstr "Jaga kaardid ja alusta järgmist mängu?"
+
 msgid  "Start new game on table"
 msgstr "Alusta laual järgmist mängu"
 
@@ -127,14 +139,20 @@ msgstr "Katkesta mäng"
 msgid  "End game?"
 msgstr "Katkesta mäng?"
 
-msgid  "Leave game"
+msgid  "Leave table"
 msgstr "Lahku lauast"
 
-msgid  "Leave game?"
+msgid  "Leave table?"
 msgstr "Lahku lauast?"
 
 msgid  "Reset game"
 msgstr "Alusta mängu otsast peale"
+
+msgid  "Kick user out"
+msgstr "Viska kasutaja välja"
+
+msgid  "Drop player"
+msgstr "Eemalda mängija koht"
 
 msgid  "Reset game series"
 msgstr "Alusta uut mänguseeriat"
@@ -199,14 +217,14 @@ msgstr "Mahaläinud kaardid"
 msgid  "Show last discards"
 msgstr "Näita viimasena mahaläinud kaarte"
 
-msgid  "Last discards:"
-msgstr "Viimasena mahaläinud kaardid:"
+msgid  "Discards #{0}:"
+msgstr "Mahaläinud kaardid #{0}:"
 
-msgid  "Kick out"
-msgstr "Viska lauast välja"
+msgid  "Drop player '{0}' from game?"
+msgstr "Eemalda mängija '{0}' koht lauast?"
 
-msgid  "Kick player '{}' out of game?"
-msgstr "Löö mängija '{}' lauast minema?"
+msgid  "Kick user '{0}' from game?"
+msgstr "Viska kasutaja '{0}' lauast välja?"
 
 msgid  "Starting game.."
 msgstr "Alustan mängu.."
@@ -295,8 +313,14 @@ msgstr "Vigane käik"
 msgid  "Cannot pass"
 msgstr "Ei saa passida"
 
+msgid  "Cannot crawl"
+msgstr "Ei saa roomata"
+
 msgid  "Cannot crawl if you have a top card"
 msgstr "Ei saa roomata, kui on kõige tugevamat kaarti"
+
+msgid  "Cannot make {0}"
+msgstr "Ei saa teha {0}"
 
 msgid  "Cannot make {0} this round"
 msgstr "Selles raundis ei saa teha {0}"
@@ -351,3 +375,28 @@ msgstr "Pole trumbi kaart"
 
 msgid  "Not the right move"
 msgstr "Pole õige käik"
+
+msgid  "Request already processed"
+msgstr "Taotlus juba läbi"
+
+msgid  "User '{0}' wishes to join the game."
+msgstr "Kasutaja '{0}' soovib mänguga liituda."
+
+msgid  "Request to join game was rejected."
+msgstr "Mänguga liitumine lükati tagasi."
+
+msgid  "Sent request to join game."
+msgstr "Mänguga liitumise soov saadetud."
+
+msgid  "You are table host"
+msgstr "Oled laua omanik"
+
+msgid  "You are player"
+msgstr "Oled lauas mängija"
+
+msgid  "Show previous"
+msgstr "Näita eelmist"
+
+msgid  "Show next"
+msgstr "Näita järgmist"
+
