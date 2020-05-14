@@ -967,8 +967,11 @@ div.player div.name.pulse {
   animation: unset;
 }
 div.player div.name.pulse::after {
-  animation:        boggle 60s infinite linear;
+  animation:        boggle 60s 1 linear;
   position:         relative;
+}
+div.player.me div.name.pulse::after {
+  animation:        boggle 60s infinite linear;
 }
 
 
