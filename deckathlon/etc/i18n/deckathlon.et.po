@@ -420,3 +420,12 @@ msgstr "Ootamatu viga"
 
 msgid  "Cannot make trump: not enough cards"
 msgstr "Ei saa trumpi teha: liiga vähe kaarte"
+
+msgid  "Demand redeal"
+msgstr "Nõua uusi kaarte"
+
+msgid  "Demand redeal?"
+msgstr "Nõua uusi kaarte?"
+
+msgid  "redeal"
+msgstr "uued kaardid"

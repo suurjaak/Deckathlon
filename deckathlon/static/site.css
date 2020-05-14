@@ -790,7 +790,7 @@ div.table div.scores thead tr:first-child th {
 
 
 /** Bidding and distribution styling. */
-div.table div.bidding div.bids table td:first-child {
+div.table div.bids table td:first-child {
   padding-right:    2pt;
 }
 div.table div.bidding select.suite {
@@ -808,7 +808,7 @@ div.table div.distribute button.give {
   width:            50pt;
   height:           30pt;
 }
-div.table div.bidding div.bids {
+div.table div.bids {
   font-size:        0.8em;
   max-height:       200pt;
   overflow:         auto;

@@ -517,6 +517,7 @@ var TEMPLATE_TABLE = `
 
             <button v-bind:disabled="!biddable" v-on:click="onBid(true, $event)">{{ _("Bid") }}</button>
             <button v-if="passable" v-on:click="onBid(false, $event)">{{ _("Pass") }}</button>
+            <button v-if="redealable" v-on:click="onRedeal">{{ _("Demand redeal") }}</button>
 
           </div>
 
@@ -594,6 +595,7 @@ var TEMPLATE_TABLE = `
 
         <div v-if="game && 'ended' == game.status" class="gameover">
           {{ ("complete" == table.status) ? _("Game completed") : _("Game over") }}
+
           <table v-if="!Util.isEmpty(game.score)" class="score">
             <tr v-if="!Util.isEmpty(game.bid)">
               <td class="bid">{{ _("Bidding") }}:</td>
@@ -604,7 +606,17 @@ var TEMPLATE_TABLE = `
               <td>{{ game.score[playerx.id] }}</td>
             </tr>
           </table>
+
+          <div v-else-if="game.opts.redeal" class="bids">
+            <table>
+              <tr v-for="item in game.bids">
+                <td>{{ getName(item) }}:</td>
+                <td v-html="formatBid(item)"></td>
+              </tr>
+            </table>
+          </div>
         </div>
+
 
 
       </div>
@@ -936,6 +948,17 @@ Vue.component("page_table", {
     },
 
 
+    /** Returns whether player can demand redeal. */
+    redealable: function() {
+      var self = this;
+      if (!self.player || !Util.get(self.template, "opts", "redeal")
+      || self.game.bids.some(function(x) { return x.fk_player == self.player.id })) return;
+
+      var copts = Util.get(self.template, "opts", "redeal", "condition") || {};
+      return copts.hand && Util.intersect(self.player.hand, copts.hand).length >= copts.min;
+    },
+
+
     /** Returns whether distributing player can sell talon. */
     sellable: function() {
       var self = this;
@@ -1097,6 +1120,7 @@ Vue.component("page_table", {
       };
       if (bid.blind) result += " " + _("blind");
       if (bid.sell && doSale)  result += " " + _("sale");
+      if (bid.redeal)  result += " " + _("redeal");
       return result;
     },
 
@@ -1764,12 +1788,12 @@ Vue.component("page_table", {
       var self = this;
       evt.target.disabled = true;
 
-      var talon = Util.difference(self.player.hand, self.player.hand0);
-      var cards = Util.createElement("div", {"class": "cards"}, talon.map(function(card) {
+      var cards = Util.difference(self.player.hand, self.player.hand0);
+      var dom = Util.createElement("div", {"class": "cards"}, cards.map(function(card) {
         return Util.createElement("div", {"class": "card"}, Cardery.tag(card, true));
-      })).outerHTML;
+      }));
 
-      AppActions.dialog(_("Put the talon cards on sale?"), {cancel: true, html: cards, onclose: function(result) {
+      AppActions.dialog(_("Put the talon cards on sale?"), {cancel: true, dom: dom, onclose: function(result) {
         if (!result) return evt.target.disabled = false;
 
         var data = {action: "sell", fk_table: self.table.id};
@@ -1779,6 +1803,34 @@ Vue.component("page_table", {
           self.hand = self.player.hand0;
         }).error(function(err, req) {
           console.log("Error putting on sale.", err, req);
+          AppActions.dialog(_(err));
+        }).complete(function() {
+          evt.target.disabled = false;
+        });
+      }});
+    },
+
+
+    onRedeal: function(evt) {
+      var self = this;
+      evt.target.disabled = true;
+
+      var cards = Util.intersect(self.player.hand, Util.get(self.template, "opts", "redeal", "condition", "hand"));
+      var dom = Util.createElement("div", {"class": "cards"}, cards.map(function(card) {
+        return Util.createElement("div", {"class": "card"}, Cardery.tag(card, true));
+      }));
+
+      AppActions.dialog(_("Demand redeal?"), {cancel: true, dom: dom, onclose: function(result) {
+        if (!result) return evt.target.disabled = false;
+
+        var data = {action: "redeal", fk_table: self.table.id};
+        Data.query({url: "actions", data: data}).success(function() {
+          Vue.set(self.game, "fk_player", null);
+          Vue.set(self.game, "opts", Util.merge(self.game.opts, {redeal: true}));
+          Vue.set(self.game, "bids", self.game.bids.concat({fk_player: self.player.id, redeal: true}));
+          Vue.set(self.game, "status", "ended");
+        }).error(function(err, req) {
+          console.log("Error demanding redeal.", err, req);
           AppActions.dialog(_(err));
         }).complete(function() {
           evt.target.disabled = false;

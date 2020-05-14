@@ -457,9 +457,9 @@ class Table(object):
         """
         result, error, status = None, None, httplib.OK
 
-        HANDLERS = {"start": self.start, "end":   self.end,  "look": self.look,
-                    "bid":   self.bid,   "move":  self.move, "distribute": self.distribute,
-                    "sell":  self.sell,  "reset": self.reset}
+        HANDLERS = {"start": self.start, "end":    self.end,    "look": self.look,
+                    "bid":   self.bid,   "move":   self.move,   "distribute": self.distribute,
+                    "sell":  self.sell,  "redeal": self.redeal, "reset": self.reset}
 
         if data["action"] not in HANDLERS:
             error, status = "Unknown action", httplib.BAD_REQUEST
@@ -475,6 +475,7 @@ class Table(object):
                 try:
                     error, status = HANDLERS[data["action"]](data)
                 except Exception:
+                    logger.exception("Error handling action '%s' for table #%s.", data["action"], tableid)
                     error, status = "Unexpected error", httplib.INTERNAL_SERVER_ERROR
 
             if error:
@@ -790,8 +791,41 @@ class Table(object):
                         "bids": game["bids"] + [dict(bid, sell=True)],
                         "opts": dict(game["opts"], sell=True)}
 
-            self._tx.update("games",   gchanges, id=game["id"])
             self._tx.update("players", pchanges, id=player["id"])
+            self._tx.update("games",   gchanges, id=game["id"])
+
+        return error, status
+
+
+    def redeal(self, data):
+        """Carries out game sell action."""
+        error, status = None, httplib.OK
+
+        table, template, game, players, player = self.populate(
+            template=True, game=True, players=True, player=True
+        )
+        copts = util.get(template, "opts", "redeal", "condition")
+
+        if "bidding" != game["status"]:
+            error, status = "Not in bidding phase", httplib.CONFLICT
+        elif game["fk_player"] != player["id"]:
+            error, status = "Not player's turn", httplib.FORBIDDEN
+        elif not util.get(template, "opts", "redeal"):
+            error, status = "Unknown action", httplib.BAD_REQUEST
+        elif any(x.get("fk_player") == player["id"] for x in game["bids"]):
+            error, status = "Forbidden", httplib.FORBIDDEN
+        elif len(set(copts.get("hand", [])) & set(player["hand"])) < copts.get("min", sys.maxint):
+            error, status = "Forbidden", httplib.FORBIDDEN
+
+        else:
+            pchanges = {"expected": {}, "status": ""}
+            gchanges = {"status": "ended", "fk_player": None,
+                        "bids": game["bids"] + [{"fk_player": player["id"], "redeal": True}],
+                        "opts": dict(game["opts"], redeal=True)}
+
+            for p in players: self._tx.update("players", pchanges, id=p["id"])
+            self._tx.update("games",  gchanges, id=game["id"])
+            self._tx.update("tables", {"status": "ended"}, id=table["id"])
 
         return error, status
 
