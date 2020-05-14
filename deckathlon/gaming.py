@@ -1299,6 +1299,8 @@ def distribute_deck(template, players, deck):
 
     for p in players:
         result[p["id"]] = sort(template, result[p["id"]])
+    if util.get(template, "opts", "bidding", "talon"):
+        result["talon"] = sort(template, result["talon"])
 
     return result
 
