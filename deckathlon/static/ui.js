@@ -480,6 +480,10 @@ var TEMPLATE_TABLE = `
 
           <button class="give" v-bind:disabled="!distributable" v-on:click="onDistribute">{{ _("Give") }}</button>
 
+          <div v-if="sellable" class="controls">
+            <button v-on:click="onSell" v-bind:title="_('Put talon on sale.')">{{ _("Sell") }}</button>
+          </div>
+
         </div>
 
 
@@ -593,7 +597,7 @@ var TEMPLATE_TABLE = `
           <table v-if="!Util.isEmpty(game.score)" class="score">
             <tr v-if="!Util.isEmpty(game.bid)">
               <td class="bid">{{ _("Bidding") }}:</td>
-              <td class="bid" v-html="formatBid(game.bid, true)"></td>
+              <td class="bid" v-html="formatBid(game.bid, true, false)"></td>
             </tr>
             <tr v-for="playerx in players">
               <td>{{ getName(playerx) }}:</td>
@@ -683,13 +687,13 @@ var TEMPLATE_TABLE = `
                   {{ formatScore(scores, j, playerx) }}
                 </td>
                 <td v-if="!Util.isEmpty(getData('bids'))" class="bid">
-                  {{ formatBid(getData('bids')[i][j], true) }}
+                  {{ formatBid(getData('bids')[i][j], true, false) }}
                 </td>
               </tr>
               <tr v-if="game && 'ended' != game.status && !Util.isEmpty(game.bid)">
                 <td class="index">{{ getData("bids")[i].length + 1 }}</td>
                 <td v-for="playerx in players"></td>
-                <td class="bid">{{ formatBid(game.bid, true) }}</td>
+                <td class="bid">{{ formatBid(game.bid, true, false) }}</td>
               </tr>
             </tbody>
           </table>
@@ -932,6 +936,16 @@ Vue.component("page_table", {
     },
 
 
+    /** Returns whether distributing player can sell talon. */
+    sellable: function() {
+      var self = this;
+      return self.player && self.game && !Util.isEmpty(self.game.bid)
+             && "distributing" == self.game.status
+             && Util.get(self.template, "opts", "bidding", "sell")
+             && !self.game.bids.some(function(x) { return x.sell; });
+    },
+
+
     /** Returns whether current game move has all requirements filled. */
     playable: function() {
       var self = this;
@@ -1071,7 +1085,7 @@ Vue.component("page_table", {
 
 
     /** Returns HTML element containing bid information. */
-    formatBid: function(bid, doUser) {
+    formatBid: function(bid, doUser, doSale) {
       var self = this;
       if (!Object.keys(bid).length) return null;
 
@@ -1082,6 +1096,7 @@ Vue.component("page_table", {
         result += Cardery.tag(bid.suite);
       };
       if (bid.blind) result += " " + _("blind");
+      if (bid.sell && doSale)  result += " " + _("sale");
       return result;
     },
 
@@ -1743,6 +1758,34 @@ Vue.component("page_table", {
         evt.target.disabled = false;
       });
     },
+
+
+    onSell: function(evt) {
+      var self = this;
+      evt.target.disabled = true;
+
+      var talon = Util.difference(self.player.hand, self.player.hand0);
+      var cards = Util.createElement("div", {"class": "cards"}, talon.map(function(card) {
+        return Util.createElement("div", {"class": "card"}, Cardery.tag(card, true));
+      })).outerHTML;
+
+      AppActions.dialog(_("Put the talon cards on sale?"), {cancel: true, html: cards, onclose: function(result) {
+        if (!result) return evt.target.disabled = false;
+
+        var data = {action: "sell", fk_table: self.table.id};
+        Data.query({url: "actions", data: data}).success(function() {
+          Vue.set(self.game, "fk_player", null);
+          Vue.set(self.game, "status", "bidding");
+          self.hand = self.player.hand0;
+        }).error(function(err, req) {
+          console.log("Error putting on sale.", err, req);
+          AppActions.dialog(_(err));
+        }).complete(function() {
+          evt.target.disabled = false;
+        });
+      }});
+    },
+
 
   },
 

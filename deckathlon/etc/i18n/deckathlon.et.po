@@ -403,3 +403,17 @@ msgstr "Näita eelmist"
 msgid  "Show next"
 msgstr "Näita järgmist"
 
+msgid  "Sell"
+msgstr "Müü"
+
+msgid  "sale"
+msgstr "müük"
+
+msgid  "Put talon on sale."
+msgstr "Pane lauast saadud kaardid müüki"
+
+msgid  "Put the talon cards on sale?"
+msgstr "Pane lauast saadud kaardid müüki?"
+
+msgid  "Unexpected error"
+msgstr "Ootamatu viga"

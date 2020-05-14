@@ -457,9 +457,9 @@ class Table(object):
         """
         result, error, status = None, None, httplib.OK
 
-        HANDLERS = {"start": self.start, "end": self.end, "look": self.look,
-                    "bid": self.bid, "move": self.move, "distribute": self.distribute,
-                    "reset": self.reset}
+        HANDLERS = {"start": self.start, "end":   self.end,  "look": self.look,
+                    "bid":   self.bid,   "move":  self.move, "distribute": self.distribute,
+                    "sell":  self.sell,  "reset": self.reset}
 
         if data["action"] not in HANDLERS:
             error, status = "Unknown action", httplib.BAD_REQUEST
@@ -472,7 +472,10 @@ class Table(object):
             else:
                 self._table_users = table_users
                 self._table = self._tx.fetchone("tables", id=tableid)
-                error, status = HANDLERS[data["action"]](data)
+                try:
+                    error, status = HANDLERS[data["action"]](data)
+                except Exception:
+                    error, status = "Unexpected error", httplib.INTERNAL_SERVER_ERROR
 
             if error:
                 self._tx.rollback()
@@ -662,7 +665,8 @@ class Table(object):
         elif not data.get("data"):
             error, status = "Bid missing data", httplib.BAD_REQUEST
         else:
-            bid, do_pass = data["data"], data["data"].get("pass")
+            bid = {k: v for k, v in data["data"].items() if k in ("number", "pass", "suite")}
+            do_pass = data["data"].get("pass")
             can_pass    = util.get(template, "opts", "bidding", "pass")
             pass_final  = util.get(template, "opts", "bidding", "pass_final")
             needs_suite = util.get(template, "opts", "bidding", "suite")
@@ -673,9 +677,9 @@ class Table(object):
             or needs_suite and bid.get("suite") not in template["opts"]["bidding"]["suite"]):
                 error, status = "Bid missing data", httplib.BAD_REQUEST
 
-            elif not do_pass and bid_beyond_limit(template, player, bid, "min"):
+            elif not do_pass and bid_beyond_limit(template, game, player, bid, "min"):
                 error, status = "Bid too small", httplib.BAD_REQUEST
-            elif not do_pass and bid_beyond_limit(template, player, bid, "max"):
+            elif not do_pass and bid_beyond_limit(template, game, player, bid, "max"):
                 error, status = "Bid too high", httplib.BAD_REQUEST
             elif not do_pass \
             and util.get(template, "opts", "bidding", "step") is not None \
@@ -703,11 +707,13 @@ class Table(object):
             gchanges = {"bids": game["bids"] + [dict(bid, fk_player=player["id"])]}
             tchanges = {}
 
-            lastbids, winningbid = {}, {}
+            lastbids, winningbid, do_sell = {}, {}, False
             for bid0 in gchanges["bids"][::-1]:
                 if bid0["fk_player"] not in lastbids:
                     lastbids[bid0["fk_player"]] = bid0
                     if not bid0.get("pass"): winningbid = bid0
+                    if bid0.get("sell") and game["opts"].get("sell"):
+                        break # for bid0
 
             if len(lastbids) == len(players) \
             and all(x.get("pass") for x in lastbids.values()):
@@ -745,7 +751,7 @@ class Table(object):
                     gchanges["status"] = "ongoing"
 
             else:
-                if pass_final:
+                if pass_final and not game["opts"].get("sell"):
                     player2 = players[(players.index(player) + 1) % len(players)]
                     while player2["id"] in lastbids and lastbids[player2["id"]].get("pass"):
                         player2 = players[(players.index(player2) + 1) % len(players)]
@@ -755,6 +761,37 @@ class Table(object):
 
             self._tx.update("games", gchanges, id=game["id"])
             if tchanges: self._tx.update("tables",  tchanges, id=table["id"])
+
+        return error, status
+
+
+    def sell(self, data):
+        """Carries out game sell action."""
+        error, status = None, httplib.OK
+
+        table, template, game, players, player = self.populate(
+            template=True, game=True, players=True, player=True
+        )
+
+        if "distributing" != game["status"]:
+            error, status = "Not in distributing phase", httplib.CONFLICT
+        elif game["fk_player"] != player["id"]:
+            error, status = "Not player's turn", httplib.FORBIDDEN
+        elif not util.get(template, "opts", "bidding", "sell"):
+            error, status = "Unknown action", httplib.BAD_REQUEST
+        elif any(x.get("sell") for x in game["bids"]):
+            error, status = "Forbidden", httplib.FORBIDDEN
+        else:
+            bid = copy.deepcopy(game["bid"])
+            bid.pop("blind", None)
+            pchanges = {"expected": {}, "hand": player["hand0"], "status": ""}
+            gchanges = {"talon": game["talon0"], "status": "bidding", "bid": {},
+                        "fk_player": players[(players.index(player) + 1) % len(players)]["id"],
+                        "bids": game["bids"] + [dict(bid, sell=True)],
+                        "opts": dict(game["opts"], sell=True)}
+
+            self._tx.update("games",   gchanges, id=game["id"])
+            self._tx.update("players", pchanges, id=player["id"])
 
         return error, status
 
@@ -1149,6 +1186,11 @@ class Table(object):
             # Game supports blind bidding, player has not looked at own cards yet
             faceup = False
 
+        if faceup is None and field in ("talon", "talon0") \
+        and game and game["opts"].get("sell"):
+            # Reveal talon if selling talon
+            faceup = True
+
         if faceup is None and field == "trick":
             # Game ongoing trick visible, if not crawl
             faceup = True
@@ -1370,7 +1412,7 @@ def game_ranking(template, game, players):
     return result
 
 
-def bid_beyond_limit(template, player, bid, side):
+def bid_beyond_limit(template, game, player, bid, side):
     """Returns whether player bid is over or under allowed maximum or minimum."""
     result = False
     limit = util.get(template, "opts", "bidding", side)
@@ -1378,8 +1420,9 @@ def bid_beyond_limit(template, player, bid, side):
         if "blind" in limit and bid.get("blind"):
             limit = limit.get("blind")
         elif "trump" in limit and util.get(template, "opts", "trump") \
-        and any(len(set(player["hand"]) & set(cc)) == len(cc)
-                for cc in util.get(template, "opts", "move", "special", "trump", "*")):
+        and (any(x.get("sell") for x in game["bids"])
+        or any(len(set(player["hand"]) & set(cc)) == len(cc)
+                for cc in util.get(template, "opts", "move", "special", "trump", "*"))):
             limit = limit.get("trump")
         else: limit = limit.get("*")
 

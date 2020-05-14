@@ -244,6 +244,12 @@ body.index #appdialog select {
 #table a {
   font-size:        0.8em;
 }
+#table div.table div.controls {
+  position:        absolute;
+  bottom:          0;
+  right:           0;
+  padding:         5pt;
+}
 
 
 
@@ -455,12 +461,6 @@ div.table div.moves > div.cards {
   bottom:          5pt;
   left:            calc(50% - 100pt);
   width:           200pt;
-}
-div.table div.moves div.controls {
-  position:        absolute;
-  bottom:          0;
-  right:           0;
-  padding:         5pt;
 }
 div.tabletop div.moves div.trick div.player {
   display:         flex;
@@ -807,12 +807,6 @@ div.table div.distribute button.give {
   left:             calc(50% - 25pt);
   width:            50pt;
   height:           30pt;
-}
-div.table div.bidding div.controls {
-  position:         absolute;
-  bottom:           0;
-  right:            0;
-  padding:          5pt;
 }
 div.table div.bidding div.bids {
   font-size:        0.8em;
