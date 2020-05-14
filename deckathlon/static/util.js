@@ -4,7 +4,7 @@
  *
  * @author    Erki Suurjaak
  * @created   01.03.2015
- * @modified  11.05.2020
+ * @modified  14.05.2020
  */
 "use strict";
 
@@ -493,6 +493,16 @@ var Util = new function() {
   self.objectMap = function(obj, factory) {
     var ctor = (factory instanceof Function) ? factory : function() { return factory; };
     return Object.keys(obj).reduce(function(o, v) { o[v] = ctor(v, obj[v]); return o; }, {});
+  };
+
+
+  /**
+   * Returns function(value), returning whether value matches all words in search text.
+   */
+  self.makeTextFilter = function(text) {
+    var words = String(text).split(/\s/g).filter(Boolean);
+    var regexes = words.map(function(word) { return new RegExp(Util.escapeRegExp(word), "i"); });
+    return function(value) { return regexes.every(function(r) { return String(value).match(r); }); };
   };
 
 

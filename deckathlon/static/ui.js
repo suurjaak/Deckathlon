@@ -4,7 +4,7 @@
  *
  * @author    Erki Suurjaak
  * @created   18.04.2020
- * @modified  13.05.2020
+ * @modified  14.05.2020
  */
 
 
@@ -86,7 +86,7 @@ Vue.component("login", {
         self.msgclass = "error";
         self.msg = _(401 == req.status ?
                      "Invalid username or password." :
-                     "Error contacting login server.");
+                     "Error contacting server.");
       }).complete(function() {
         self.$forceUpdate();
       });
@@ -138,34 +138,40 @@ var TEMPLATE_INDEX = `
 
     <h1>{{ Data.db.settings.get("title") }}</h1>
 
-    <table v-if="!Util.isEmpty(tables)" class="tables">
-      <thead>
-        <tr>
-          <th>{{ _("Table") }}</th>
-          <th>{{ _("Game") }}</th>
-          <th>{{ _("Host") }}</th>
-          <th>{{ _("Players") }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="item in tables" v-bind:key="item.id">
-          <td>
-            <a v-bind:href="Data.db.settings.get('rootURL') + 'table/' + item.shortid">{{ item.name }}</a>
-            <span v-if="user && item.fk_host == user.id"
-                  v-bind:title="_('You are table host')"
-                  class="tag">&copy;</span>
-          </td>
-          <td>{{ Data.db.templates.rw.get(item.fk_template).name }}</td>
-          <td>{{ Data.db.users.rw.get(item.fk_host).username }}</td>
-          <td>
-            {{ item.players }}
-            <span v-if="user && item.users.indexOf(user.id) >= 0"
-                  v-bind:title="_('You are player')"
-                  class="tag">&reg;</span>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="tables">
+
+      <input type="search" v-bind:placeholder="_('Search')"
+             v-on:keyup="onSearch" v-on:change="onSearch" v-on:search="onSearch" />
+
+      <table v-if="!Util.isEmpty(alltables)">
+        <thead>
+          <tr>
+            <th>{{ _("Table") }}</th>
+            <th>{{ _("Game") }}</th>
+            <th>{{ _("Host") }}</th>
+            <th>{{ _("Players") }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in tables" v-bind:key="item.id">
+            <td>
+              <a v-bind:href="Data.db.settings.get('rootURL') + 'table/' + item.shortid">{{ item.name }}</a>
+              <span v-if="user && item.fk_host == user.id"
+                    v-bind:title="_('You are table host')"
+                    class="tag">&copy;</span>
+            </td>
+            <td>{{ Data.db.templates.rw.get(item.fk_template).name }}</td>
+            <td>{{ Data.db.users.rw.get(item.fk_host).username }}</td>
+            <td>
+              {{ item.players }}
+              <span v-if="user && item.users.indexOf(user.id) >= 0"
+                    v-bind:title="_('You are player')"
+                    class="tag">&reg;</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
 
     <div class="controls">
@@ -215,8 +221,9 @@ Vue.component("index", {
 
   data: function() {
     return {
-      tables:        Data.db.tables.list(),
-      templates:     Data.db.templates.list(),
+      alltables:        [],    // All available tables
+      tables:           [],    // Search-filtered tables
+      templates:        [],
       table_join:       false, // Whether dialog is joining private table 
       table_shortid:    "",    // Shortid of private table to join
       table_new:        false, // Whether dialog is creating new table
@@ -224,6 +231,9 @@ Vue.component("index", {
       table_template:   null,  // Selected game template for new table
       table_public:     false, // Public-flag for new table
       table_opts:       {},    // {join: Boolean}
+      searchtimer:      null,  // Delayed search timer
+      search:           "",    // Current search text
+      searchfilter:     null,  // Current search filter-function
       user:             null,
       unsubscribes:     [],    // Data listener unsubscribers
     };
@@ -231,7 +241,12 @@ Vue.component("index", {
 
   mounted: function() {
     var self = this;
-    self.tables    = Data.db.tables.list();
+    self.alltables = Data.db.tables.list().map(function(x) {
+      x.template = Data.db.templates.rw.get(x.fk_template).name;
+      x.host     = Data.db.users.rw.get(x.fk_host).username;
+      return x;
+    });
+    self.tables    = self.alltables.slice();
     self.templates = Data.db.templates.list();
     self.user = Data.db.user.get();
     self.unsubscribes = [Data.db.user.listen(self.onData),
@@ -251,7 +266,34 @@ Vue.component("index", {
     onData: function(type) {
       var self = this;
       if ("user" == type) self.user = Data.db.user.get();
-      else self[type] = Data.db[type].list();
+      else if ("tables" == type) {
+        self.alltables = Data.db.tables.list().map(function(x) {
+          x.template = Data.db.templates.rw.get(x.fk_template).name;
+          x.host     = Data.db.users.rw.get(x.fk_host).username;
+          return x;
+        });
+        var search = self.search;
+        self.search = "";
+        self.onSearch(search);
+      } else self[type] = Data.db[type].list();
+    },
+
+    onSearch: function(evt) {
+      var self = this;
+      window.clearTimeout(self.searchtimer); // Avoid reacting to rapid changes
+
+      var search = Util.isString(evt) ? evt : evt.target.value.trim();
+      var timer = self.searchtimer = window.setTimeout(function() {
+        if (timer == self.searchtimer && search != self.search) {
+          self.search = search;
+          self.searchfilter = search ? Util.makeTextFilter(search) : null;
+          self.tables = self.alltables.filter(function(x) {
+            return !self.searchfilter || [x.name, x.template, x.host, x.players].some(self.searchfilter);
+          });
+          self.$forceUpdate();
+        };
+        self.searchtimer = null;
+      }, 200);
     },
 
     onOpenTable: function(item) {
@@ -441,7 +483,7 @@ var TEMPLATE_TABLE = `
         </div>
 
 
-        <div v-if="game && 'bidding' == game.status" class="bidding">
+        <div v-if="game && 'bidding' == game.status || !Util.isEmpty(game.bid) && 'ended' != game.status && Util.isEmpty(game.trick) && Util.isEmpty(game.tricks)" class="bidding">
           <span class="heading">{{ _("Bidding") }}</span>
 
           <div class="bids" id="bids">
@@ -454,7 +496,7 @@ var TEMPLATE_TABLE = `
           </div>
 
 
-          <div v-if="isTurn(player)" class="controls">
+          <div v-if="'bidding' == game.status && isTurn(player)" class="controls">
 
             <select v-if="Util.get(template, 'opts', 'bidding', 'suite')" v-model="move.suite" class="suite">
               <option v-for="suite in template.opts.suites" v-bind:key="suite" v-bind:value="suite" v-html="Cardery.glyph(suite)"></option>
@@ -547,11 +589,11 @@ var TEMPLATE_TABLE = `
 
 
         <div v-if="game && 'ended' == game.status" class="gameover">
-          {{ _("Game over") }}
+          {{ ("complete" == table.status) ? _("Game completed") : _("Game over") }}
           <table v-if="!Util.isEmpty(game.score)" class="score">
             <tr v-if="!Util.isEmpty(game.bid)">
               <td class="bid">{{ _("Bidding") }}:</td>
-              <td class="bid" v-html="formatBid(game.bid)"></td>
+              <td class="bid" v-html="formatBid(game.bid, true)"></td>
             </tr>
             <tr v-for="playerx in players">
               <td>{{ getName(playerx) }}:</td>
@@ -569,6 +611,7 @@ var TEMPLATE_TABLE = `
         <div v-bind:class="getClass('name', playerx)"
              v-bind:title="offline[playerx.fk_user] ? _('Offline since {0}').format(offline[playerx.fk_user].strftime('%H:%M, %d.%m.%Y')) : ''">
           {{ getName(playerx) }}
+          <span v-if="offline[playerx.fk_user]" class="offline"></span>
         </div>
         <div class="cards">
           <div v-for="card in getData('hand', playerx)" v-html="Cardery.tag(card)" class="card"></div>
@@ -587,7 +630,7 @@ var TEMPLATE_TABLE = `
 
 
       <div v-if="player" class="player me">
-        <div v-bind:class="'name' + (isTurn(player) ? ' turn' : '')">{{ getName(player) }}</div>
+        <div v-bind:class="getClass('name', player)">{{ getName(player) }}</div>
         <div class="cards"
              v-on:dragover   ="onDragCardTo(player.id, $event)"
              v-on:drop       ="onDropCard(player.id, $event)" >
@@ -595,7 +638,7 @@ var TEMPLATE_TABLE = `
                v-bind:draggable="draggable(card)"
                v-on:dragstart  ="onDragCardStart(player.id, card, $event)"
                v-on:dblclick   ="onMoveCard(player.id, null, card)"
-               class="card"></div>
+               v-bind:class="getClass('card', card)"></div>
           <button v-if="blindable" v-on:click="onLookAtHand" class="look">{{ _("Look at cards") }}</button>
         </div>
 
@@ -618,7 +661,7 @@ var TEMPLATE_TABLE = `
       </div>
 
 
-      <div v-if="!Util.isEmpty(getData('scores'))" class="scores" id="scores">
+      <div v-if="!Util.isEmpty(getData('scores')) || !Util.isEmpty(game.bid)" class="scores" id="scores">
 
         <div v-for="(scores, i) in getData('scores')">
           <div v-if="!Util.isEmpty(table.scores_history)">
@@ -733,6 +776,7 @@ Vue.component("page_table", {
   sounds: {
     deal:  "deal.mp3",  // Played on cards being dealt
     knock: "knock.mp3", // Played on current player's turn
+    trump: "trump.mp3", // Played on trump being made
   },
 
   data: function() {
@@ -764,10 +808,8 @@ Vue.component("page_table", {
     var user = Data.db.user.get();
     self.table        = Data.db.tables.next();
     self.player       = Data.db.players.next({fk_user: user.id});
-    self.player0      = self.player;
     self.players      = Data.db.players.list();
     self.game         = Data.db.games.next(self.table ? {sequence: self.table.games} : null);
-    self.game0        = self.game;
     self.user         = user;
     self.table_users  = Data.db.table_users.list();
     self.template     = Data.db.templates.next();
@@ -797,6 +839,8 @@ Vue.component("page_table", {
       new Audio(Data.db.settings.get("staticURL") + "media/" + file);
     });
     self.setPageTitle();
+    self.processDataUpdate("games");
+    self.processDataUpdate("players");
   },
 
 
@@ -928,13 +972,23 @@ Vue.component("page_table", {
 
       if (self.player && !self.game.trick.length) {
         var sopts = Util.get(self.template, "opts", "move", "special") || {};
+
         result = Object.keys(sopts).reduce(function(o, special) {
           var can = Util.get(sopts, special, self.game.tricks.length) !== false;
           can = can && Util.get(sopts, special, "*").some(function(cards) {
             return Util.intersect(self.player.hand, cards).length >= cards.length;
           });
-          if (can && Util.get(sopts, special, "condition")) {
-            can = self.game.opts[sopts[special].condition];
+          if (can && Util.get(sopts, special, "condition", "opt")) {
+            can = self.game.opts[sopts[special].condition.opt];
+          };
+          if (can && Util.get(sopts, special, "condition", "suite")) {
+            var optsuite = Cardery.name(self.game.opts[sopts[special].condition.opt]);
+            var potentials = Util.get(sopts, special, "*").reduce(function(o, v) {
+              var inter = Util.intersect(self.player.hand, v);
+              if (inter.length >= v.length) o.push.apply(o, v);
+              return o;
+            }, []);
+            can = potentials.some(function(x) { return Cardery.name(x) == optsuite; });
           };
           if (can) o.push(special);
           return o;
@@ -980,7 +1034,14 @@ Vue.component("page_table", {
     draggable: function(card) {
       var self = this;
       var result = self.game && (["ongoing", "distributing"].indexOf(self.game.status) >= 0);
-      return result && self.isTurn(self.player);
+      result = result && self.isTurn(self.player);
+
+      // Allow preparing move before own turn
+      if (!result && Util.get(self.template, "opts", "trick")
+      && self.game.trick.length && !self.game.trick.some(function(x) {
+        return x.fk_player == self.player.id;
+      })) result = true;
+      return result;
     },
 
 
@@ -1069,8 +1130,19 @@ Vue.component("page_table", {
       } else if ("player" == name) {
          result += " pos{0}of{1}".format(a + 1, self.players.length);
       } else if ("name" == name) {
-         result = "name" + (self.isTurn(a) ? " turn" : "");
+         result = "name";
+         if (self.isTurn(a)) {
+           result += " turn";
+           if (Util.isEmpty(self.game0) || self.game0.fk_player != self.game.fk_player)
+             result += " pulse";
+         };
          if (self.offline[a.fk_user]) result += " offline";
+      } else if ("card" == name) {
+         result = "card";
+         if ("ended" != self.game.status && !Util.isEmpty(self.player.hand) 
+         && Util.isEmpty(self.game.tricks) && Util.isEmpty(self.game.trick) && Util.isEmpty(self.move)
+         && Util.difference(self.player.hand, self.player.hand0).indexOf(a) >= 0
+         && (Util.get(self.game, "bid", "fk_player") != self.player.id || "ongoing" != self.game.status)) result += " pulse";
       };
       return result;
     },
@@ -1122,22 +1194,29 @@ Vue.component("page_table", {
     },
 
 
-    /** Plays certain sound files if game state has changed. */
-    playDataSound: function(type) {
+    /**
+     * Plays certain sound files if game state has changed,
+     * pre-fills bid.
+     */
+    processDataUpdate: function(type) {
       var self = this;
       var sound = null;
 
       if ("games" == type || "tables" == type) {
-        if (Util.isEmpty(self.game0) && !Util.isEmpty(self.game)
-        || !Util.isEmpty(self.game0) && self.game0.id != self.game.id) sound = "deal";
+        if ((Util.isEmpty(self.game0) && !Util.isEmpty(self.game)
+             || !Util.isEmpty(self.game0) && self.game0.id != self.game.id)
+        && Util.isEmpty(self.game.trick) && Util.isEmpty(self.game.bids)
+        && JSON.stringify(self.player.hand) == JSON.stringify(self.player.hand0)) sound = "deal";
       };
 
       // @todo kehvaste veel.. bidding -> distributing -> move on vahepeal kopp
       if (!sound && "games" == type) {
+
         if (!Util.isEmpty(self.game) && !Util.isEmpty(self.player)
         && Util.get(self.game0, "fk_player") != self.game.fk_player && self.game.fk_player == self.player.id) {
           sound = "knock";
-        }
+        } else if ((Util.isEmpty(self.game0) || self.game0.trick.length != self.game.trick.length)
+        && self.game.trick.length && self.game.trick[self.game.trick.length - 1].trump) sound = "trump";
 
       } else if ("players" == type) {
         if (!Util.isEmpty(self.player) && !Util.isEmpty(self.player.expected)
@@ -1145,6 +1224,18 @@ Vue.component("page_table", {
         && (Util.isEmpty(self.game0) && Util.isEmpty(self.game) || !self.game.fk_player)) {
           sound = "knock";
         }
+      };
+
+
+      if ("games" == type || "players" == type) {
+        if ("bidding" == self.game.status && !Util.isEmpty(self.game.bids)) {
+          var number = self.game.bids.reduce(function(o, v) {
+            return v.number > o ? v.number : o; // Pre-fill starting bid to latest
+          }, 0);
+          if (number) Vue.set(self.move, "number", number);
+        } else if ("bidding" != self.game.status && !self.move.__touched) {
+          self.move = {};
+        };
       };
 
 
@@ -1255,10 +1346,10 @@ Vue.component("page_table", {
       };
 
       if ("requests" == type) self.processRequests();
-      if ("tables" == type) window.setTimeout(self.scrollToBottom, 500, "scores");
+      if ("tables" == type || "games" == type && self.game && !Util.isEmpty(self.game.bid)) window.setTimeout(self.scrollToBottom, 500, "scores");
       if ("games"  == type) window.setTimeout(self.scrollToBottom, 500, "trick");
       if ("games"  == type) window.setTimeout(self.scrollToBottom, 500, "bid");
-      self.playDataSound(type);
+      self.processDataUpdate(type);
       self.setPageTitle();
     },
 
@@ -1311,7 +1402,10 @@ Vue.component("page_table", {
     /** Handler for moving a card from source to target. */
     onMoveCard: function(source, target, card) {
       var self = this;
-      if (!card || !self.isTurn(self.player) || ["distributing", "ongoing"].indexOf(self.game.status) < 0) return;
+      if (!card || ["distributing", "ongoing"].indexOf(self.game.status) < 0) return;
+      if (!self.isTurn(self.player) && (!Util.get(self.template, "opts", "trick") || !self.game.trick.length || self.game.trick.some(function(x) {
+        return x.fk_player == self.player.id;
+      }))) return;
 
       // From hand to table or distribution
       if (source == self.player.id) {
@@ -1343,6 +1437,7 @@ Vue.component("page_table", {
         var move = self.move[target] || [];
         move.push(card);
         Vue.set(self.move, target, move);
+        self.move.__touched = true;
 
       // From table or distribution to hand
       } else if (target == self.player.id) {
@@ -1550,7 +1645,7 @@ Vue.component("page_table", {
         ),
         Util.createElement("div", {"class": "moves"}, cards),
         Util.createElement("div", {"class": "next"},
-          (any && index < player.tricks.length - 1) ? Util.createElement("button", {"onclick": self.onShowPlayerTrick.bind(self, player, index+1), "title": _("Show next")}, ">") : "",
+          any && (index < player.tricks.length - 1) ? Util.createElement("button", {"onclick": self.onShowPlayerTrick.bind(self, player, index+1), "title": _("Show next")}, ">") : "",
         ),
       ])});
     },
@@ -1574,13 +1669,14 @@ Vue.component("page_table", {
         ]);
       }).filter(Boolean);
 
+      var any = ("ended" == self.game.status);
       AppActions.dialog(_("Discards #{0}:").format(index + 1), {dom: Util.createElement("div", {"class": "discard"}, [
         Util.createElement("div", {"class": "prev"},
-          index ? Util.createElement("button", {"onclick": self.onShowDiscards.bind(self, index-1), "title": _("Show previous")}, "<") : "",
+          any && index ? Util.createElement("button", {"onclick": self.onShowDiscards.bind(self, index-1), "title": _("Show previous")}, "<") : "",
         ),
         Util.createElement("div", {"class": "moves"}, cards),
         Util.createElement("div", {"class": "next"},
-          (index < self.game.discards.length - 1) ? Util.createElement("button", {"onclick": self.onShowDiscards.bind(self, index+1), "title": _("Show next")}, ">") : "",
+          any && (index < self.game.discards.length - 1) ? Util.createElement("button", {"onclick": self.onShowDiscards.bind(self, index+1), "title": _("Show next")}, ">") : "",
         ),
       ])});
     },
@@ -1589,7 +1685,8 @@ Vue.component("page_table", {
     /** Carries out game action: make a bid. */
     onBid: function(nopass, evt) {
       var self = this;
-      var bid = nopass ? self.move : {pass: true};
+      var bid = nopass ? Util.clone(self.move) : {pass: true};
+      delete bid.__touched;
       if (nopass && self.blindable) bid.blind = true;
       var data = {action: "bid", fk_table: self.table.id, data: bid};
 
@@ -1609,12 +1706,15 @@ Vue.component("page_table", {
     /** Carries out game action: make a move. */
     onMove: function(nopass, evt) {
       var self = this;
-      var move = nopass ? self.move : {pass: true};
+      var move = nopass ? Util.clone(self.move) : {pass: true};
+      delete move.__touched;
       var data = {action: "move", fk_table: self.table.id, data: move};
 
       evt.target.disabled = true;
       Data.query({url: "actions", data: data}).success(function() {
-        Vue.set(self.game, "fk_player", null);
+        Vue.set(self.game, "fk_player", null); // Get immediate UI update
+        if (Util.isEmpty(self.game.trick))     // Avoid previous trick flicker
+          Vue.set(self.game, "tricks", self.game.tricks.concat([[Util.merge(move, {"fk_player": self.player.id})]]));
         self.move = {};
       }).error(function(err, req) {
         console.log("Error making move.", err, req);
@@ -1628,7 +1728,9 @@ Vue.component("page_table", {
     /** Carries out game action: distribute cards to other players. */
     onDistribute: function(evt) {
       var self = this;
-      var data = {action: "distribute", fk_table: self.table.id, data: self.move};
+      var given = Util.clone(self.move);
+      delete given.__touched;
+      var data = {action: "distribute", fk_table: self.table.id, data: given};
 
       evt.target.disabled = true;
       Data.query({url: "actions", data: data}).success(function() {

@@ -22,7 +22,7 @@ msgstr "Parool õige, avan saiti.."
 msgid  "Invalid username or password."
 msgstr "Vale kasutajanimi või parool."
 
-msgid  "Error contacting login server."
+msgid  "Error contacting server."
 msgstr "Viga serveriga ühendumisel."
 
 msgid  "Registration successful, loading site.."
@@ -198,6 +198,9 @@ msgstr "Tihid"
 
 msgid  "Game over"
 msgstr "Mäng läbi"
+
+msgid  "Game completed"
+msgstr "Mäng lõpetatud"
 
 msgid  "Show trick #{0}"
 msgstr "Vaata tihi #{0}"

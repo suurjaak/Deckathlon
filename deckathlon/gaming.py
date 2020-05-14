@@ -4,7 +4,7 @@ Gaming engine.
 
 @author    Erki Suurjaak
 @created   19.04.2020
-@modified  13.05.2020
+@modified  14.05.2020
 ------------------------------------------------------------------------------
 """
 import collections
@@ -801,7 +801,7 @@ class Table(object):
             if ranking[player["id"]] > len(playersx) / 2:
                 # The lower half of ranking needs to give top cards
                 phand = drop(player["hand"], allgiven)
-                if strength(template, phand[0]) > strength(template, allgiven[-1]):
+                if cmp_cards(template, phand[0], allgiven[-1]) > 0:
                     error, status = "Must give top cards", httplib.BAD_REQUEST
 
         if not error:
@@ -853,7 +853,7 @@ class Table(object):
 
 
             else:
-                # Singple player making distributing move
+                # Single player making distributing move
                 gchanges = {"status": "ongoing"}
                 pchanges = {"expected": {}}
 
@@ -921,8 +921,10 @@ class Table(object):
             elif do_trump and not any(len(set(player["hand"]) & set(cc)) == len(cc)
                                       for cc in util.get(template, "opts", "move", "special", "trump", "*")):
                 error, status = "No cards to make trump", httplib.FORBIDDEN
-            elif do_trump and not any(set(cards) & set(cc)
-                                      for cc in util.get(template, "opts", "move", "special", "trump", "*")):
+            elif do_trump and not (set(cards) & set(
+                c for cc in util.get(template, "opts", "move", "special", "trump", "*")
+                if len(set(player["hand"]) & set(cc)) == len(cc) for c in cc
+            )):
                 error, status = "Not trump card", httplib.FORBIDDEN
 
             elif do_special and util.get(template, "opts", "move", "special", do_special) is None:
@@ -932,12 +934,17 @@ class Table(object):
             elif do_special and not any(len(set(player["hand"]) & set(cc)) == len(cc)
                                       for cc in util.get(template, "opts", "move", "special", do_special, "*")):
                 error, status = "No cards to make {0}".format(do_special), httplib.FORBIDDEN
-            elif do_special and not any(set(cards) & set(cc)
-                                      for cc in util.get(template, "opts", "move", "special", do_special, "*")):
+            elif do_special and not (set(cards) & set(
+                c for cc in util.get(template, "opts", "move", "special", do_special, "*")
+                if len(set(player["hand"]) & set(cc)) == len(cc) for c in cc
+            )):
                 error, status = "Not {0} card".format(do_special), httplib.FORBIDDEN
-            elif do_special and util.get(template, "opts", "move", "special", do_special, "condition") \
-            and not util.get(game, "opts", util.get(template, "opts", "move", "special", do_special, "condition")):
-                error, status = "Not meeting {0} condition: {1}".format(do_special, util.get(template, "opts", "move", "special", do_special, "condition")), httplib.FORBIDDEN
+            elif do_special and util.get(template, "opts", "move", "special", do_special, "condition") is not None \
+            and not util.get(game, "opts", util.get(template, "opts", "move", "special", do_special, "condition", "opt")):
+                error, status = "Not meeting {0} condition: {1}".format(do_special, util.get(template, "opts", "move", "special", do_special, "condition", "opt")), httplib.FORBIDDEN
+            elif do_special and util.get(template, "opts", "move", "special", do_special, "condition", "suite") \
+            and util.get(game, "opts", util.get(template, "opts", "move", "special", do_special, "condition", "opt")) != suite(cards[0]):
+                error, status = "Not meeting {0} condition: {1}".format(do_special, util.get(template, "opts", "move", "special", do_special, "condition", "opt")), httplib.FORBIDDEN
 
 
         if not error:
@@ -1039,9 +1046,10 @@ class Table(object):
             self._tx.update("players", pchanges, id=player["id"])
             if pchanges2: self._tx.update("players", pchanges2, id=player2["id"])
             if tchanges:  self._tx.update("tables",  tchanges,  id=table["id"])
+            table.update(tchanges)
 
             if game_over:
-                game    = self._tx.fetchone("games",   fk_table=table["id"], order=("dt_created", True))
+                game    = self._tx.fetchone("games",   fk_table=table["id"], order=[("dt_created", True)])
                 players = self._tx.fetchall("players", fk_table=table["id"], dt_deleted=None, order="sequence")
 
                 gchanges = {"status": "ended", "fk_player": table["fk_host"]}
@@ -1218,12 +1226,13 @@ def distribute_deck(template, players, deck):
 
 def sort(template, cards):
     """Returns cards sorted according to template options."""
-    return sorted(cards, cmp=lambda a, b: -cmp_cards(template, a, b))
+    return sorted(cards, cmp=lambda a, b: -cmp_cards(template, a, b, True))
 
 
-def cmp_cards(template, a, b):
+def cmp_cards(template, a, b, sort=False):
     """
     Returns whether card a is weaker, equal or stronger than b (-1, 0, 1).
+    If sort, returns cards of equal level in fixed suite order.
     """
     result = 0
 
@@ -1237,6 +1246,9 @@ def cmp_cards(template, a, b):
             result = suites.index(suite(a)) - suites.index(suite(b))
         if "strength" == category and strengths:
             result = strengths.index(level(a)) - strengths.index(level(b))
+
+    if sort and not result and suites:
+        result = suites.index(suite(a)) - suites.index(suite(b))
 
     return result and result / abs(result)
 
@@ -1300,6 +1312,10 @@ def game_points(template, table, game, players):
             else:
                 # Bidder only wins as much as they bid
                 score = game["bid"]["number"]
+                if util.get(popts, "bonuses", "blind") \
+                and game["bid"].get("blind"):
+                    op = util.get(popts, "bonuses", "blind")
+
             if op: score = apply_op(game["bid"]["number"], op)
 
         if player["id"] != game["bid"].get("fk_player") \
@@ -1359,7 +1375,9 @@ def bid_beyond_limit(template, player, bid, side):
     result = False
     limit = util.get(template, "opts", "bidding", side)
     if isinstance(limit, dict):
-        if "trump" in limit and util.get(template, "opts", "trump") \
+        if "blind" in limit and bid.get("blind"):
+            limit = limit.get("blind")
+        elif "trump" in limit and util.get(template, "opts", "trump") \
         and any(len(set(player["hand"]) & set(cc)) == len(cc)
                 for cc in util.get(template, "opts", "move", "special", "trump", "*")):
             limit = limit.get("trump")

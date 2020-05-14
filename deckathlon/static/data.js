@@ -4,7 +4,7 @@
  *
  * @author    Erki Suurjaak
  * @created   10.05.2019
- * @modified  20.04.2020
+ * @modified  14.05.2020
  */
 
 var DataActions = PubSub.topic(
@@ -707,7 +707,7 @@ var Data = new function() {
         try {
           err = Util.get(Util.jsonLoad(req.response), "error") || err;
         } catch (e) { console.warn(e); };
-      };
+      } else if (!req.status) err = _("Error contacting server.");
       if (opts.error) opts.error(err, req);
       else console.error(err, req);
     }).complete(function() {
