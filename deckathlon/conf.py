@@ -13,7 +13,7 @@ import sys
 """Program version."""
 Title = "Deckathlon"
 Name = "deckathlon"
-Version = "0.1.dev12"
+Version = "0.1.dev13"
 VersionDate = "14.05.2019"
 
 """Application code root path."""

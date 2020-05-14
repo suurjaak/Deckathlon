@@ -955,6 +955,9 @@ class Table(object):
                 error, status = "Cannot make trump in game", httplib.FORBIDDEN
             elif do_trump and util.get(template, "opts", "move", "special", "trump", len(game["tricks"])) == False:
                 error, status = "Cannot make trump this round", httplib.FORBIDDEN
+            elif do_trump and util.get(template, "opts", "move", "special", "trump", "condition", "cards") \
+            and len(player["hand"]) < util.get(template, "opts", "move", "special", "trump", "condition", "cards"):
+                error, status = "Cannot make trump: not enough cards", httplib.FORBIDDEN
             elif do_trump and not any(len(set(player["hand"]) & set(cc)) == len(cc)
                                       for cc in util.get(template, "opts", "move", "special", "trump", "*")):
                 error, status = "No cards to make trump", httplib.FORBIDDEN

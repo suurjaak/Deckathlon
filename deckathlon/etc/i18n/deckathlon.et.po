@@ -338,7 +338,7 @@ msgid  "Cannot make trump in game"
 msgstr "Selles mängus ei saa trumpi teha"
 
 msgid  "Cannot make trump this round"
-msgstr "Selles raundis ei saa teha trumpi"
+msgstr "Selles raundis ei saa trumpi teha"
 
 msgid  "Must give top cards"
 msgstr "Peab andma kõige tugevamaid kaarte"
@@ -417,3 +417,6 @@ msgstr "Pane lauast saadud kaardid müüki?"
 
 msgid  "Unexpected error"
 msgstr "Ootamatu viga"
+
+msgid  "Cannot make trump: not enough cards"
+msgstr "Ei saa trumpi teha: liiga vähe kaarte"
