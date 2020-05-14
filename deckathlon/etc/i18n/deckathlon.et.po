@@ -199,8 +199,8 @@ msgstr "Tihid"
 msgid  "Game over"
 msgstr "Mäng läbi"
 
-msgid  "Game completed"
-msgstr "Mäng lõpetatud"
+msgid  "Game finished"
+msgstr "Mäng lõppenud"
 
 msgid  "Show trick #{0}"
 msgstr "Vaata tihi #{0}"

@@ -594,7 +594,7 @@ var TEMPLATE_TABLE = `
 
 
         <div v-if="game && 'ended' == game.status" class="gameover">
-          {{ ("complete" == table.status) ? _("Game completed") : _("Game over") }}
+          {{ ("complete" == table.status) ? _("Game finished") : _("Game over") }}
 
           <table v-if="!Util.isEmpty(game.score)" class="score">
             <tr v-if="!Util.isEmpty(game.bid)">
