@@ -372,7 +372,7 @@ class Table(object):
                     elif table["status"] not in ("new", "ended", "complete") \
                     and len(userplayers) == len(players):
                         error, status = "Cannot join game in progress", httplib.CONFLICT
-                    elif not in_range(len(userplayers) + 1, util.get(template, "opts", "players")):
+                    elif not in_range(len(userplayers) + 1, util.get(template, "opts", "players"), lower=False):
                         error, status = "Table full", httplib.CONFLICT
 
                 if error is None:
@@ -392,6 +392,8 @@ class Table(object):
         """
         result, error, status = None, None, httplib.OK
 
+        table = self._table = self._tx.fetchone("tables", id=data["fk_table"])
+
         with MUTEX[table["id"]]:
             request = self._tx.fetchone("requests", id=requestid)
 
@@ -401,7 +403,6 @@ class Table(object):
             and util.get(request, "opts", "processed", self._userid):
                 error, status = "Request already processed", httplib.CONFLICT
             else:
-                self._table = self._tx.fetchone("tables", id=request["fk_table"])
                 table, template, players, table_users = self.populate(
                     template=True, players=True, table_users=True
                 )
@@ -425,7 +426,7 @@ class Table(object):
                 and len(userplayers) == len(players):
                     error, status = "Cannot join game in progress", httplib.CONFLICT
                     rchanges.update(status="rejected")
-                elif not in_range(len(userplayers) + 1, util.get(template, "opts", "players")):
+                elif not in_range(len(userplayers) + 1, util.get(template, "opts", "players"), lower=False):
                     error, status = "Table full", httplib.CONFLICT
                     rchanges.update(status="rejected")
                 elif any(x["fk_user"] == request["fk_user"] for x in players):
@@ -1583,16 +1584,15 @@ def apply_op(value, opts):
     return result    
 
 
-def in_range(value, rng):
+def in_range(value, rng, lower=True, upper=True):
     """
     Returns whether value is in range if rng is array,
     else smaller or equal if rng is scalar.
     Returns true if rng is null.
     """
-    if rng is None: return True
+    if rng is None or not lower and not upper: return True
     rng = [0, rng] if isinstance(rng, (int, long)) else rng
-    return rng[0] <= value <= rng[1]
-
+    return (not lower or rng[0] <= value) and (not upper or value <= rng[1])
 
 
 

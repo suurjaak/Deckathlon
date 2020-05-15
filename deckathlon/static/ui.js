@@ -8,7 +8,7 @@
  *
  * @author    Erki Suurjaak
  * @created   18.04.2020
- * @modified  14.05.2020
+ * @modified  15.05.2020
  */
 
 
@@ -491,7 +491,7 @@ var TEMPLATE_TABLE = `
         </div>
 
 
-        <div v-if="game && 'bidding' == game.status || !Util.isEmpty(game.bid) && 'ended' != game.status && Util.isEmpty(game.trick) && Util.isEmpty(game.tricks)" class="bidding">
+        <div v-if="biddingable" class="bidding">
           <span class="heading">{{ _("Bidding") }}</span>
 
           <div class="bids" id="bids">
@@ -611,7 +611,7 @@ var TEMPLATE_TABLE = `
             </tr>
           </table>
 
-          <div v-else-if="game.opts.redeal" class="bids">
+          <div v-else-if="game.bids" class="bids">
             <table>
               <tr v-for="item in game.bids">
                 <td>{{ getName(item) }}:</td>
@@ -681,7 +681,7 @@ var TEMPLATE_TABLE = `
       </div>
 
 
-      <div v-if="!Util.isEmpty(getData('scores')) || !Util.isEmpty(game.bid)" class="scores" id="scores">
+      <div v-if="scoreable" class="scores" id="scores">
 
         <div v-for="(scores, i) in getData('scores')">
           <div v-if="!Util.isEmpty(table.scores_history)">
@@ -707,7 +707,7 @@ var TEMPLATE_TABLE = `
                 </td>
               </tr>
               <tr v-if="game && 'ended' != game.status && !Util.isEmpty(game.bid)">
-                <td class="index">{{ getData("bids")[i].length + 1 }}</td>
+                <td class="index">{{ Util.isEmpty(scores) ? "" : getData("bids")[i].length + 1 }}</td>
                 <td v-for="playerx in players"></td>
                 <td class="bid">{{ formatBid(game.bid, true, false) }}</td>
               </tr>
@@ -945,6 +945,24 @@ Vue.component("page_table", {
     },
 
 
+    /** Returns whether to show bidding section. */
+    biddingable: function() {
+      var self = this;
+      return self.game && ("bidding" == self.game.status || 
+        !Util.isEmpty(self.game.bid) && "ended" != self.game.status 
+        && Util.isEmpty(self.game.trick) && Util.isEmpty(self.game.tricks)
+      );
+    },
+
+
+    /** Returns whether to show scores section. */
+    scoreable: function() {
+      var self = this;
+      return self.getData("scores").some(function(x) { return !Util.isEmpty(x); })
+             || self.game && !Util.isEmpty(self.game.bid);
+    },
+
+
     /** Returns whether current game bid has all requirements filled. */
     biddable: function() {
       var self = this;
@@ -1155,6 +1173,7 @@ Vue.component("page_table", {
       } else if ("scores" == name && self.table) {
         result = self.table.scores_history;
         if (!Util.isEmpty(self.table.scores)) result = result.concat([self.table.scores]);
+        if (!result.length) result = result.concat([[]]); // Enable at least one iteration
       } else if ("bids" == name && self.table) {
         result = self.table.bids_history;
         if (!Util.isEmpty(self.table.bids)) result = result.concat([self.table.bids]);
@@ -1259,7 +1278,7 @@ Vue.component("page_table", {
         && Util.get(self.game0, "fk_player") != self.game.fk_player && self.game.fk_player == self.player.id) {
           sound = "knock";
         } else if ((Util.isEmpty(self.game0) || self.game0.trick.length != self.game.trick.length)
-        && self.game.trick.length && self.game.trick[self.game.trick.length - 1].trump) sound = "trump";
+        && self.game && self.game.trick.length && self.game.trick[self.game.trick.length - 1].trump) sound = "trump";
 
       } else if ("players" == type) {
         if (!Util.isEmpty(self.player) && !Util.isEmpty(self.player.expected)
@@ -1271,12 +1290,12 @@ Vue.component("page_table", {
 
 
       if ("games" == type || "players" == type) {
-        if ("bidding" == self.game.status && !Util.isEmpty(self.game.bids)) {
+        if (self.game && "bidding" == self.game.status && !Util.isEmpty(self.game.bids)) {
           var number = self.game.bids.reduce(function(o, v) {
             return v.number > o ? v.number : o; // Pre-fill starting bid to latest
           }, 0);
           if (number) Vue.set(self.move, "number", number);
-        } else if ("bidding" != self.game.status && !self.move.__touched) {
+        } else if (self.game && "bidding" != self.game.status && !self.move.__touched) {
           self.move = {};
         };
       };
@@ -1320,8 +1339,12 @@ Vue.component("page_table", {
                 modal: true, onclose: function(result) {
                   request.status = result ? "accepted" : "rejected";
                   Util.set(request, true, "opts", "processed", self.user.id);
+
                   DataActions.update("requests", request);
-                  DataActions.save("requests", request);
+                  DataActions.save("requests", request, null, function(err, req) {
+                    console.log("Error accepting request.", err, req);
+                    AppActions.dialog(_(err));
+                  });
 
                   processed[request.id] = true;
                   processNext(request);

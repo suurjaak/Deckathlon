@@ -40,6 +40,9 @@ msgstr "Kasutajanimi võetud"
 msgid  "Required data missing"
 msgstr "Vigane avaldus"
 
+msgid  "Search"
+msgstr "Otsi"
+
 msgid  "Table"
 msgstr "Laud"
 

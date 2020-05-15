@@ -81,14 +81,14 @@ try:
     import psycopg2.pool
 except ImportError: psycopg2 = None
 
-from . import Database as DB, Rollback, Transaction as TX
+from . import Database as DB, Queryable as QQ, Rollback, Transaction as TX
 from . import json_dumps, json_loads
 
 
 logger = logging.getLogger(__name__)
 
 
-class Queryable(object):
+class Queryable(QQ):
 
     TABLES = {}  # {opts json: table structure filled on first access}
     # {name: {key: "pk", fields: {col: {name, type, ?fk: "t2"}},
@@ -350,6 +350,12 @@ class Database(DB, Queryable):
         self._cursorctx = self.get_cursor(commit=True)
 
 
+    def makeSQL(self, action, table, cols="*", where=(), group=(), order=(),
+                limit=(), values=()):
+        """Returns (SQL statement string, parameter dict)."""
+        return super(Database, self).makeSQL(action, table, cols, where, group, order, limit, values)
+
+
     def insert(self, table, values=(), **kwargs):
         """
         Convenience wrapper for database INSERT, returns inserted row ID.
@@ -437,6 +443,12 @@ class Transaction(TX, Queryable):
             elif commit:        self.commit()
             self.__exit__(None, None, None)
         super(Transaction, self).close(commit)
+
+    def makeSQL(self, action, table, cols="*", where=(), group=(), order=(),
+                limit=(), values=()):
+        """Returns (SQL statement string, parameter dict)."""
+        return super(Transaction, self).makeSQL(action, table, cols, where, group, order, limit, values)
+
 
     def insert(self, table, values=(), **kwargs):
         """

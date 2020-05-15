@@ -7,7 +7,7 @@
  *
  * @author    Erki Suurjaak
  * @created   18.04.2020
- * @modified  14.05.2020
+ * @modified  15.05.2020
  */
 
 body {
@@ -201,7 +201,8 @@ body.index #appdialog select {
   padding:          2pt 4pt;
 }
 #index div.tables table {
-  width:            calc(100% - 15pt);
+  margin:           0 10pt;
+  width:            calc(100% - 20pt);
 }
 #index div.tables th:first-child,
 #index div.tables td:first-child {
@@ -216,10 +217,13 @@ body.index #appdialog select {
   position:         relative;
 }
 #index div.tables td span.tag {
+  display:          flex;
+  align-items:      center;
+  height:           100%;
   font-size:        0.8em;
   opacity:          0.8;
   position:         absolute;
-  top:              1pt;
+  top:              0;
   right:            -10pt;
 }
 #index div.tables td:first-child span.tag {

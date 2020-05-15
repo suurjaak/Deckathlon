@@ -191,6 +191,12 @@ class Database(DB, Queryable):
         self.open()
 
 
+    def makeSQL(self, action, table, cols="*", where=(), group=(), order=(),
+                limit=(), values=()):
+        """Returns (SQL statement string, parameter dict)."""
+        return super(Database, self).makeSQL(action, table, cols, where, group, order, limit, values)
+
+
     def insert(self, table, values=(), **kwargs):
         """
         Convenience wrapper for database INSERT, returns inserted row ID.
@@ -247,6 +253,11 @@ class Transaction(TX, Queryable):
         else: self._db.connection.rollback()
         self._db.connection.isolation_level = self._isolevel0
         return exc_type in (None, Rollback) # Do not propagate raised Rollback
+
+    def makeSQL(self, action, table, cols="*", where=(), group=(), order=(),
+                limit=(), values=()):
+        """Returns (SQL statement string, parameter dict)."""
+        return super(Transaction, self).makeSQL(action, table, cols, where, group, order, limit, values)
 
     def close(self, commit=None):
         """
