@@ -4,16 +4,14 @@ Web frontend entrypoint. Can run as stand-alone server or under Apache et al.
 
 @author      Erki Suurjaak
 @created     18.04.2020
-@modified    05.05.2020
+@modified    15.05.2020
 """
-import cgi
 import datetime
 import httplib
 import inspect
 import logging
 import os
 import sys
-import urllib2
 
 import beaker.middleware
 import bottle
@@ -92,31 +90,29 @@ def login():
     @param   password  login password
     @return            {status: "ok"} or HTTP 401
     """
-    body = request.body.read() or request.query_string
-    username, pw, user, err = "", "", None, ""
+    result, error, status = {}, "", httplib.OK
+    username, pw, user  = "", "", None
     try:
+        body = request.body.read() or request.query_string
         data = util.json_loads(body) or {}
         username, pw = (data[x].strip() for x in ["username", "password"])
-        user = model.login(username, pw)
     except StandardError:
-        err = "Login unsuccessful, unrecognized data."
-        logger.exception(err)
+        error, status = "Login unsuccessful, unrecognized data.", httplib.BAD_REQUEST
+        logger.exception(error)
+    else:
+        user, error, status = model.login(username, pw)
 
-    logger.info("Logging in %s %ssuccessful over REST.", username, "" if user else "un")
+    logger.info("Logging in %s %ssuccessful.", username, "" if user else "un")
     if user:
         request.session.update(username=username, userid=user["id"],
                                login=datetime.datetime.utcnow())
-        return {"status": "ok"}
-    elif err:
-        response.status = httplib.INTERNAL_SERVER_ERROR
-        return {"status": "error", "error": err}
-    elif not err:
-        response.status = httplib.UNAUTHORIZED
-        return {"status": "error", "error": "Invalid username or password"}
+    elif error: result = {"status": "error", "error": error}
+    response.status = status
+    return result
 
 
-@route("/api/poll",           method=["GET", "POST"])
-@route("/api/poll/<tableid>", method=["GET", "POST"])
+@route("/api/poll",                  method=["GET", "POST"])
+@route("/api/poll/tables/<tableid>", method=["GET", "POST"])
 @login_required
 @content_type("application/json")
 def api_poll(tableid=None):
@@ -126,27 +122,22 @@ def api_poll(tableid=None):
     @param   dt_from  UTC datetime from which to return changes
     @return           {?data: {type: []}<, status: "error", error: "message">}
     """
-    result = {}
-    body = request.body.read() or request.query_string
+    result, error, status = {}, "", httplib.OK
+    body = None
     try:
-        if "GET" == request.method:
-            args = util.parse_qs(request.query_string)
-        else:
-            args = util.json_loads(body or "{}")
-        payload, error, status = model.poll(args, request.session["userid"], tableid)
-    except urllib2.HTTPError:
-        result.update(status="error", error="Access denied.")
-        response.status = httplib.UNAUTHORIZED
-        logger.debug("Unauthorized access to api/poll.")
-    except StandardError:
-        error = "Error handling poll for %s." % (body)
-        result.update(status="error", error=error), logger.exception(error)
-        response.status = httplib.INTERNAL_SERVER_ERROR
+        body = request.body.read() or request.query_string
+        if "POST" == request.method: args = util.json_loads(body or "{}")
+        else: args = util.parse_qs(request.query_string)
+    except Exception:
+        error = "Error handling poll%s." % ("" if body is None else " for %s" % body)
+        status = httplib.BAD_REQUEST
+        logger.exception(error)
     else:
-        if error:
-            result.update(status="error", error=error)
-            response.status = status
-        elif payload: result["data"] = payload
+        payload, error, status = model.poll(args, request.session["userid"], tableid)
+
+    if error: result.update(status="error", error=error)
+    elif payload: result["data"] = payload
+    response.status = status
     return result
 
 
@@ -161,21 +152,19 @@ def register():
     @param   password  login password
     @return            {status: "ok"} or HTTP 400, 409
     """
-    try:
-        data = util.json_loads(request.body.read())
-        user, err, status = model.data_action("users", None, request.method, data)
-    except StandardError:
-        err = "Registration unsuccessful."
-        logger.exception(err)
-        status = httplib.INTERNAL_SERVER_ERROR
-
-    if err:
-        response.status = status
-        return {"status": "error", "error": err}
+    result, error, status = {}, "", httplib.OK
+    try: data = util.json_loads(request.body.read())
+    except Exception:
+        error, status = "Registration unsuccessful.", httplib.BAD_REQUEST
+        logger.exception(error)
     else:
-        request.session.update(username=user["username"], userid=user["id"],
-                               login=datetime.datetime.utcnow())
-        return {"status": "ok"}
+        user, error, status = model.data_action("users", None, request.method, data)
+
+    if error: result = {"status": "error", "error": error}
+    else: request.session.update(username=user["username"], userid=user["id"],
+                                 login=datetime.datetime.utcnow())
+    response.status = status
+    return result
 
 
 @route("/api/<datatype>", method=["GET", "POST", "PUT", "DELETE"])
@@ -188,25 +177,22 @@ def api_action(datatype, path=""):
 
     @return  {status: "ok" or "error", data: [] or {} or None, error: "message">}
     """
-    result = {}
+    result, error, status = {}, "", httplib.OK
     userid, username = map(request.session.get, ("userid", "username"))
     logger.info("API call to %s %s/%s by %s.", request.method, datatype, path, username)
-    payload = err = status = None
     try:
-        if "GET" == request.method:
-            data = util.parse_qs(request.query_string)
-        else:
-            data = util.json_loads(request.body.read() or request.query_string or "null")
-            if data: result["status"] = "ok"
-
-        payload, err, status = model.data_action(datatype, path, request.method, data, userid)
+        if "GET" == request.method: data = util.parse_qs(request.query_string)
+        else: data = util.json_loads(request.body.read() or request.query_string or "null")
     except Exception:
-        err = "Error handling query for %s." % "/".join(filter(bool, (datatype, path)))
-        status = httplib.INTERNAL_SERVER_ERROR
-        logger.exception(err)
-    if err: result.update(status="error", error=err)
+        error = "Error handling query for %s." % "/".join(filter(bool, (datatype, path)))
+        status = httplib.BAD_REQUEST
+        logger.exception(error)
+    else:
+        payload, error, status = model.data_action(datatype, path, request.method, data, userid)
+
+    if error: result.update(status="error", error=error)
     elif payload: result.update(data=payload)
-    if status: response.status = status
+    response.status = status
     return result
 
 
@@ -233,17 +219,14 @@ def table(shortid):
     schema = conf.DbSchema
 
     userid = request.session.get("userid")
-    try:
-        data, error, status = model.pagedata(request, "table", userid, shortid=shortid)
-    except Exception as e:
-        logger.exception("Error loading table data.")
-        error, status = str(e), httplib.INTERNAL_SERVER_ERROR
+    data, error, status = model.pagedata(request, "table", userid, shortid=shortid)
     if httplib.NOT_FOUND == status:
         return bottle.redirect(request.app.get_url("/"))
-    if error:
+    elif error:
         raise bottle.HTTPError(status, error)
 
-    poll = {"url": "poll/%s" % data["tables"][0]["id"], "interval": conf.PollInterval}
+    poll = {"url": "poll/tables/%s" % data["tables"][0]["id"],
+            "interval": conf.PollInterval}
     return bottle.template("table.tpl", locals())
 
 
@@ -269,10 +252,10 @@ def index():
 
     userid = request.session.get("userid")
     if not userid:
-        data, e, s = model.pagedata(request, "login")
+        data, error, status = model.pagedata(request, "login")
         return bottle.template("login.tpl", locals(), schema=conf.DbSchema)
 
-    data, e, s = model.pagedata(request, "index", userid)
+    data, error, status = model.pagedata(request, "index", userid)
     poll = {"url": "poll", "interval": conf.PollInterval}
     return bottle.template("index.tpl", locals())
 
@@ -307,7 +290,7 @@ def init():
     translate.init(conf.DefaultLanguage, conf.TranslationTemplate, conf.AutoReload)
     model.init()
 
-    bottle.route("/<url:path>", unsupported) # Add after plugin endpoints
+    bottle.route("/<url:path>", unsupported)
 
     sys.path.append(conf.RootPath)
     myapp = bottle.default_app()

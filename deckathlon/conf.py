@@ -5,16 +5,15 @@ supporting any JSON-serializable datatype, as well as Python literal eval.
 
 @author      Erki Suurjaak
 @created     18.04.2020
-@modified    14.05.2020
+@modified    15.05.2020
 """
 import os
-import sys
 
 """Program version."""
 Title = "Deckathlon"
 Name = "deckathlon"
-Version = "0.1.dev14"
-VersionDate = "14.05.2019"
+Version = "0.1.dev15"
+VersionDate = "15.05.2019"
 
 """Application code root path."""
 RootPath = ApplicationPath = os.path.dirname(os.path.abspath(__file__))
@@ -160,7 +159,6 @@ DbSchema = {
             "status":         {},
             "games":          {},
             "players":        {},
-            "status":         {},
             "bids":           {},
             "scores":         {},
             "bids_history":   {},

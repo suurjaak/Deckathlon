@@ -61,6 +61,9 @@ Database connectivity. Transaction usage:
     print "great success"    # Will print, raised Rollback only breaks with-block
 
 
+@author      Erki Suurjaak
+@created     08.05.2020
+@modified    15.05.2020
 """
 from collections import OrderedDict
 from contextlib import contextmanager
@@ -92,7 +95,6 @@ class Queryable(object):
            "<=", "<>", "<@", "=", ">", ">=", ">>", "@>", "^", "|", "||", "&&", "~",
            "~*", "ANY", "ILIKE", "IN", "IS", "IS NOT", "LIKE", "NOT ILIKE", "NOT IN",
            "NOT LIKE", "NOT SIMILAR TO", "OR", "OVERLAPS", "SIMILAR TO", "SOME")
-
 
 
     def makeSQL(self, action, table, cols="*", where=(), group=(), order=(),
@@ -379,14 +381,12 @@ class Database(DB, Queryable):
         pass # Connection pool is always open
 
 
-    def close(self, commit=None):
-        """Closes the database connection."""
+    def close(self, cascade=False):
+        """Closes connection. If cascade, closes all transactions also."""
         if self._cursor:
-            if commit is False: self._cursor.connection.rollback()
-            elif commit:        self._cursor.connection.commit()
-                
             self._cursorctx.__exit__(None, None, None)
             self._cursorctx = self._cursor = None
+        super(Database, self).close(cascade)
 
 
 class Transaction(TX, Queryable):
@@ -419,17 +419,20 @@ class Transaction(TX, Queryable):
         self._cursor = None
         return exc_type in (None, Rollback)
 
-    def close(self, commit=True):
+    def close(self, commit=None):
         """
         Closes the transaction, performing commit or rollback as configured,
         and releases database connection back to connection pool.
         Required if not using transaction as context manager in a with-block.
 
-        @param   commit  if true, performs explicit final commit on transaction
+        @param   commit  if true, performs explicit final commit on transaction;
+                         if false, performs explicit rollback
         """
-        if not self._cursor: return
-        if commit and not self._autocommit: self.commit()
-        self.__exit__(None, None, None)
+        if self._cursor:
+            if commit is False: self.rollback()
+            elif commit:        self.commit()
+            self.__exit__(None, None, None)
+        super(Transaction, self).close(commit)
 
     def insert(self, table, values=(), **kwargs):
         """

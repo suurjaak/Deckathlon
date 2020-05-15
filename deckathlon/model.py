@@ -4,7 +4,7 @@ Data facade.
 
 @author    Erki Suurjaak
 @created   17.04.2020
-@modified  13.05.2020
+@modified  15.05.2020
 ------------------------------------------------------------------------------
 """
 import datetime
@@ -20,46 +20,68 @@ from . lib import db, util
 logger = logging.getLogger(__name__)
 
 
+
+def finalize(func):
+    """Decorator that closes database connection after function call."""
+    def wrapper(*args, **kwargs):
+        try: result = func(*args, **kwargs)
+        except Exception:
+            logger.exception("Error invoking %s.", func)
+            result = None, "Unexpected error", httplib.INTERNAL_SERVER_ERROR
+        finally:
+            try: db.close(cascade=True)
+            except Exception: logger.exception("Error closing database.")
+        return result
+    return wrapper
+
+
+@finalize
 def login(username, password):
     """Returns user data row if username and password are valid."""
+    result, error, status = None, None, httplib.OK
+
     passhash = hashlib.pbkdf2_hmac("sha256", password, conf.SecretKey, 10000)
     where = {"username": username, "password": passhash.encode("hex")}
     with db.transaction() as tx:
-        data = tx.fetchone("users", where=where)
+        result = tx.fetchone("users", where=where)
 
-        if data: tx.update("online", {"dt_online": util.utcnow(), "active": True},
-                           fk_user=data["id"], fk_table=None)
-    return adapt(data, data and data["id"], "users")
+        if result: tx.update("online", {"dt_online": util.utcnow(), "active": True},
+                             fk_user=result["id"], fk_table=None)
+        else:
+            error, status = "Invalid username or password", httplib.UNAUTHORIZED
+
+    return adapt(result, result and result["id"], "users"), error, status
 
 
 
+@finalize
 def pagedata(request, page, userid=None, **kwargs):
     """Returns data for page as {type: [{..}, ]}."""
-    data, error, status = {}, None, httplib.OK
+    result, error, status = {}, None, httplib.OK
     update_offline()
 
     if "index" == page:
-        data, error, status = gaming.Table(userid).index()
+        result, error, status = gaming.Table(userid).index()
 
     if "table" == page:
-        data, error, status = gaming.Table(userid).poll(shortid=kwargs["shortid"])
+        result, error, status = gaming.Table(userid).poll(shortid=kwargs["shortid"])
 
     if not error:
         root = request.app.get_url("/")
-        data["settings"] = dict(rootURL=root, dataURL=root + "api/",
-                                staticURL=root + "static/",
-                                page=page, 
-                                title=conf.Title,
-                                version=conf.Version,
-                                versiondate=conf.VersionDate)
+        result["settings"] = dict(rootURL=root, dataURL=root + "api/",
+                                  staticURL=root + "static/",
+                                  page=page, 
+                                  title=conf.Title,
+                                  version=conf.Version,
+                                  versiondate=conf.VersionDate)
 
     if not error and userid:
-        data["user"] = db.fetchone("users", id=userid)
+        result["user"] = db.fetchone("users", id=userid)
 
-    db.close()
-    return adapt(data, userid), error, status
+    return adapt(result, userid), error, status
 
 
+@finalize
 def data_action(datatype, path, op, data, userid=None):
     """
     Carries out a GET (select), POST (create), PUT (update), or DELETE 
@@ -74,9 +96,6 @@ def data_action(datatype, path, op, data, userid=None):
 
         if "actions" == datatype:
             result, error, status = gaming.Table(userid).action(data)
-
-        if "players" == datatype:
-            result, error, status = gaming.Table(userid).join(data["fk_table"])
 
         if "requests" == datatype:
             result, error, status = gaming.Table(userid).request(data)
@@ -118,6 +137,7 @@ def data_action(datatype, path, op, data, userid=None):
     return adapt(result, userid, datatype), error, status
 
 
+@finalize
 def poll(args, userid, tableid=None):
     """Returns data for poll request, as (data, error, status)."""
     result, error, status = {}, None, httplib.OK
@@ -132,7 +152,8 @@ def poll(args, userid, tableid=None):
     else:
         result, error, status = gaming.Table(userid).poll_index(dt_from)
 
-    return adapt({k: v for k, v in result.items() if v} if result else result, userid), error, status
+    result = result and {k: v for k, v in result.items() if v}
+    return adapt(result, userid), error, status
 
 
 def update_offline():

@@ -79,19 +79,19 @@ Default row factory is dict, can be overridden via init or Database.row_factory:
     mydb.row_factory = sqlite3.Row
 
 
-------------------------------------------------------------------------------
-Released under the Creative Commons CC0 1.0 Universal Public Domain Dedication.
-
 @author      Erki Suurjaak
 @created     05.03.2014
-@modified    07.05.2020
+@modified    15.05.2020
 """
+import logging
 import os
 import re
 import sqlite3
 
 from . import Database as DB, Queryable as QQ, Rollback, Transaction as TX
 from . import json_dumps, json_loads, parse_datetime
+
+logger = logging.getLogger(__name__)
 
 
 class Queryable(QQ):
@@ -217,11 +217,12 @@ class Database(DB, Queryable):
         self.connection = conn
 
 
-    def close(self):
+    def close(self, cascade=False):
         """Closes the database connection."""
         try: self.connection.close()
         except Exception: pass
         self.connection = None
+        super(Database, self).close(cascade)
 
 
 
@@ -251,6 +252,7 @@ class Transaction(TX, Queryable):
         """
         if commit is False: self.rollback()
         elif commit:        self.commit()
+        super(Transaction, self).close(commit)
 
     def insert(self, table, values=(), **kwargs):
         """

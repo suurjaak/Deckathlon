@@ -157,9 +157,12 @@ def executescript(sql):
     return init().executescript(sql)
 
 
-def close():
-    """Closes the default database connection, if any."""
-    init().close()
+def close(cascade=False):
+    """
+    Closes the default database connection, if any.
+    If cascade, closes all database Transactions as well.
+    """
+    init().close(cascade)
 
 
 def transaction(commit=True, **kwargs):
@@ -249,12 +252,19 @@ class Queryable(object):
         raise NotImplementedError()
 
 
+    def makeSQL(self, action, table, cols="*", where=(), group=(), order=(),
+                limit=(), values=()):
+        """Returns (SQL statement string, parameter dict)."""
+        raise NotImplementedError()
+
+
 
 class Database(Queryable):
     """Database instance."""
 
-    CACHE   = collections.OrderedDict() # {(engine name, opts json): Database}
-    ENGINES = None # {"sqlite": sqlite submodule, }
+    CACHE   = collections.OrderedDict()     # {(engine name, opts json): Database}
+    TXS     = collections.defaultdict(list) # {Database: [Transaction, ], }
+    ENGINES = None                          # {"sqlite": sqlite submodule, }
 
 
     @classmethod
@@ -283,7 +293,9 @@ class Database(Queryable):
 
         @param   commit  whether transaction autocommits at exit
         """
-        return self.engine.Transaction(self, commit)
+        tx = self.engine.Transaction(self, commit)
+        self.TXS[self].append(tx)
+        return tx
 
 
     def open(self):
@@ -291,9 +303,11 @@ class Database(Queryable):
         raise NotImplementedError()
 
 
-    def close(self):
-        """Closes connection."""
-        raise NotImplementedError()
+    def close(self, cascade=False):
+        """Closes connection. If cascade, closes all transactions also."""
+        if not cascade or self not in self.TXS: return
+        for tx in self.TXS[self]: tx.close()
+        self.TXS.pop(self, None)
 
 
 
@@ -310,7 +324,11 @@ class Transaction(Queryable):
     def __exit__(self, exc_type, exc_val, exc_trace):
         return exc_type in (None, Rollback) # Do not propagate raised Rollback
 
-    def close(self, commit=True): raise NotImplementedError()
+    def close(self, commit=None):
+        """Removes transaction from Database cache."""
+        if self in Database.TXS.get(self._db, []):
+            Database.TXS[self._db].remove(self)
+
     def commit(self):             raise NotImplementedError()
     def rollback(self):           raise NotImplementedError()
         
@@ -409,26 +427,3 @@ def load_modules(basepackage, basefile):
         module = importlib.import_module(modulename)
         result[name] = module
     return result
-
-
-
-
-if "__main__" == __name__:
-    def test():
-        import db
-        db.init(":memory:", "CREATE TABLE test (id INTEGER PRIMARY KEY, val TEXT)")
-
-        print("Inserted ID %s." % db.insert("test", val=None))
-        for i in range(5): print("Inserted ID %s." % db.insert("test", {"val": i}))
-        print("Fetch ID 1: %s." % db.fetchone("test", id=1))
-        print("Fetch all up to 3, order by val: %s." % db.fetchall("test", order="val", limit=3))
-        print("Updated %s row where val is NULL." % db.update("test", {"val": "new"}, val=None))
-        print("Select where val IN [0, 1, 2]: %s." % db.fetchall("test", val=("IN", range(3))))
-        print("Delete %s row where val=0." % db.delete("test", val=0))
-        with db.transaction():
-            print("Delete %s row where val=1, and roll back." % db.delete("test", val=1))
-            raise db.Rollback
-        print("Fetch all, order by val: %s." % db.fetchall("test", order="val"))
-        db.execute("DROP TABLE test")
-        db.close()
-    test()
