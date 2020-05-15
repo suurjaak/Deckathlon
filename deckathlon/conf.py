@@ -3,6 +3,10 @@
 Configuration settings. Can read additional/overridden options from INI file,
 supporting any JSON-serializable datatype, as well as Python literal eval.
 
+------------------------------------------------------------------------------
+This file is part of Deckathlon - card game website.
+Released under the MIT License.
+
 @author      Erki Suurjaak
 @created     18.04.2020
 @modified    15.05.2020

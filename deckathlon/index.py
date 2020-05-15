@@ -2,6 +2,10 @@
 """
 Web frontend entrypoint. Can run as stand-alone server or under Apache et al.
 
+------------------------------------------------------------------------------
+This file is part of Deckathlon - card game website.
+Released under the MIT License.
+
 @author      Erki Suurjaak
 @created     18.04.2020
 @modified    15.05.2020

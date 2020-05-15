@@ -6,6 +6,10 @@ Login page template.
 @param   schema          {url, datatype: {url, key, fields: {name: {name, key, fk, fklabel}, }}, }
 @param   translations    simple flat translations dictionary for current language
 
+------------------------------------------------------------------------------
+This file is part of Deckathlon - card game website.
+Released under the MIT License.
+
 @author      Erki Suurjaak
 @created     18.04.2020
 @modified    05.05.2020

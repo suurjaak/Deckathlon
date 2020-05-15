@@ -61,6 +61,10 @@ Database connectivity. Transaction usage:
     print "great success"    # Will print, raised Rollback only breaks with-block
 
 
+------------------------------------------------------------------------------
+This file is part of Deckathlon - card game website.
+Released under the MIT License.
+
 @author      Erki Suurjaak
 @created     08.05.2020
 @modified    15.05.2020

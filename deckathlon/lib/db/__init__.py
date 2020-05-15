@@ -71,6 +71,10 @@ can be used by keeping a reference to the connection:
     d2.insert("bars", val="bar")
 
 
+------------------------------------------------------------------------------
+This file is part of Deckathlon - card game website.
+Released under the MIT License.
+
 @author      Erki Suurjaak
 @created     05.03.2014
 @modified    13.05.2020

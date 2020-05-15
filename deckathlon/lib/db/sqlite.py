@@ -79,6 +79,10 @@ Default row factory is dict, can be overridden via init or Database.row_factory:
     mydb.row_factory = sqlite3.Row
 
 
+------------------------------------------------------------------------------
+This file is part of Deckathlon - card game website.
+Released under the MIT License.
+
 @author      Erki Suurjaak
 @created     05.03.2014
 @modified    15.05.2020

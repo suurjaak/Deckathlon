@@ -2,6 +2,10 @@
 """
 Data facade.
 
+------------------------------------------------------------------------------
+This file is part of Deckathlon - card game website.
+Released under the MIT License.
+
 @author    Erki Suurjaak
 @created   17.04.2020
 @modified  15.05.2020

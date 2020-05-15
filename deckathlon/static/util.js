@@ -2,6 +2,10 @@
  * Utility functions.
  * Util.dateChoices requires Moment.js.
  *
+ * ------------------------------------------------------------------------------
+ * This file is part of Deckathlon - card game website.
+ * Released under the MIT License.
+ *
  * @author    Erki Suurjaak
  * @created   01.03.2015
  * @modified  14.05.2020

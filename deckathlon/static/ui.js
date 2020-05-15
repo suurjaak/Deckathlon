@@ -2,6 +2,10 @@
  * Application components.
  * Requires Vue.js, data.js, util.js.
  *
+ * ------------------------------------------------------------------------------
+ * This file is part of Deckathlon - card game website.
+ * Released under the MIT License.
+ *
  * @author    Erki Suurjaak
  * @created   18.04.2020
  * @modified  14.05.2020

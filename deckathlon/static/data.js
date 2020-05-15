@@ -2,6 +2,10 @@
  * Data handling and persistence logic.
  * Requires util.js.
  *
+ * ------------------------------------------------------------------------------
+ * This file is part of Deckathlon - card game website.
+ * Released under the MIT License.
+ *
  * @author    Erki Suurjaak
  * @created   10.05.2019
  * @modified  14.05.2020

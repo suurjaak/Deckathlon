@@ -2,6 +2,10 @@
 """
 Utility functions and classes.
 
+------------------------------------------------------------------------------
+This file is part of Deckathlon - card game website.
+Released under the MIT License.
+
 @author      Erki Suurjaak
 @created     04.02.2015
 @modified    07.05.2020
