@@ -8,7 +8,7 @@ Released under the MIT License.
 
 @author    Erki Suurjaak
 @created   19.04.2020
-@modified  14.05.2020
+@modified  16.05.2020
 ------------------------------------------------------------------------------
 """
 import collections
@@ -1391,10 +1391,10 @@ def game_points(template, table, game, players):
 
         for trick in player["moves"]:
             for move in trick:
-                if move.get("trump") and popts.get("trump"):
-                    score += popts["trump"][suite(move["cards"][0])]
-                for x in set(popts) & set(move):
-                    if "trump" != x and move.get(x): score += popts[x]
+                if move.get("trump") and util.get(popts, "special", "trump"):
+                    score += popts["special"]["trump"][suite(move["cards"][0])]
+                for x in set(popts.get("special", {})) & set(move):
+                    if "trump" != x and move.get(x): score += popts["special"][x]
 
         if player["id"] == game["bid"].get("fk_player") \
         and game["bid"].get("number"):
@@ -1591,7 +1591,7 @@ def in_range(value, rng, lower=True, upper=True):
     Returns true if rng is null.
     """
     if rng is None or not lower and not upper: return True
-    rng = [0, rng] if isinstance(rng, (int, long)) else rng
+    rng = [1, rng] if isinstance(rng, (int, long)) else rng
     return (not lower or rng[0] <= value) and (not upper or value <= rng[1])
 
 
