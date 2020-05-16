@@ -113,22 +113,45 @@ class Queryable(QQ):
             """Returns column value cast to correct type for use in sqlite."""
             return tuple(val) if isinstance(val, set) else val
 
+        def parse_members(i, col, op, val):
+            """Returns (col, op, val, argkey)."""
+            key = "%sW%s" % (re.sub("\\W+", "_", col), i)
+            if "EXPR" == col.upper():
+                # ("EXPR", ("SQL", val))
+                col, op, val, key = val[0], "EXPR", val[1], "EXPRW%s" % i
+            elif col.count("?") == argcount(val):
+                # ("any SQL with ? placeholders", val)
+                op, val, key = "EXPR", listify(val), "EXPRW%s" % i
+            elif isinstance(val, (list, tuple)) and len(val) == 2 \
+            and isinstance(val[0], basestring):
+                tmp = val[0].strip().upper()
+                if tmp in self.OPS: # ("col", ("binary op like >=", val))
+                    op, val = tmp, val[1]
+                elif val[0].count("?") == argcount(val[1]):
+                    # ("col", ("SQL with ? placeholders", val))
+                    col, val, op = "%s = %s" % (col, val[0]), listify(val[1]), "EXPR"
+            return col, op, val, key
+        def argcount(x): return len(x) if isinstance(x, (list, set, tuple)) else 1
+        def listify(x) : return x if isinstance(x, (list, tuple)) else [x]
+
         action = action.upper()
         cols   =    cols if isinstance(cols,  basestring) else ", ".join(cols)
-        group  =   group if isinstance(group, basestring) else ", ".join(group)
+        where  = [where] if isinstance(where, basestring) else where
+        group  =   group if isinstance(group, basestring) else ", ".join(map(str, listify(group)))
         order  = [order] if isinstance(order, basestring) else order
+        order  = [order] if isinstance(order, (list, tuple)) \
+                 and len(order) == 2 and isinstance(order[1], bool) else order
         limit  = [limit] if isinstance(limit, (basestring, int, long)) else limit
         values = values if not isinstance(values, dict) else values.items()
-        where  =  where if not isinstance(where, dict)  else where.items()
-        if len(order) == 2 and isinstance(order[0], basestring) \
-        and isinstance(order[1], bool): order = [order]
+        where  =  where if not isinstance(where,  dict)  else where.items()
         sql = "SELECT %s FROM %s" % (cols, table) if "SELECT" == action else ""
         sql = "DELETE FROM %s"    % (table)       if "DELETE" == action else sql
         sql = "INSERT INTO %s"    % (table)       if "INSERT" == action else sql
         sql = "UPDATE %s"         % (table)       if "UPDATE" == action else sql
         args = {}
+
         if "INSERT" == action:
-            args.update(values)
+            args.update((k, cast(k, v)) for k, v in values)
             cols, vals = (", ".join(x + k for k, v in values) for x in ("", ":"))
             sql += " (%s) VALUES (%s)" % (cols, vals)
         if "UPDATE" == action:
@@ -138,42 +161,48 @@ class Queryable(QQ):
                 args["%sU%s" % (col, i)] = val
         if where:
             sql += " WHERE "
-            for i, (col, val) in enumerate(where):
-                key = "%sW%s" % (re.sub("\\W+", "_", col), i)
-                dbval = val[-1] if isinstance(val, (list, tuple)) else val
-                op = ("IS" if dbval == val else val[0])
-                if op.upper() in self.OPS: op = op.upper()
-                op = "=" if dbval is not None and "IS" == op else op
-                op = "IS" if dbval is None and "=" == op else op
-                op = "IS NOT" if dbval is None and "!=" == op else op
-                if "EXPR" == col.upper(): op, col = col.upper(), op
+            for i, clause in enumerate(where):
+                if isinstance(clause, basestring): # "raw SQL with no arguments"
+                    clause = (clause, )
+
+                if len(clause) == 1: # ("raw SQL with no arguments", )
+                    col, op, val, key = clause[0], "EXPR", [], None
+                elif len(clause) == 2: # ("col", val) or ("col", ("op" or "expr with ?", val))
+                    col, op, val, key = parse_members(i, clause[0], "=", clause[1])
+                else: # ("col", "op" or "expr with ?", val)
+                    col, op, val, key = parse_members(i, *clause)
+
                 if op in ("IN", "NOT IN"):
-                    keys = ["%s_%s" % (key, j) for j in range(len(dbval))]
-                    args.update({k: cast(col, v) for k, v in zip(keys, dbval)})
+                    keys = ["%s_%s" % (key, j) for j in range(len(val))]
+                    args.update({k: cast(col, v) for k, v in zip(keys, val)})
                     sql += (" AND " if i else "") + "%s %s (%s)" % (
                             col, op, ", ".join(":" + x for x in keys))
                 elif "EXPR" == op:
-                    key = "EXPRW%s" % i # Expression can be ridiculously long
-                    for j, v in enumerate(dbval):
+                    for j in range(col.count("?")):
                         col = col.replace("?", ":%s_%s" % (key, j), 1)
-                        args["%s_%s" % (key, j)] = cast(col, v)
-                    sql += (" AND " if i else "") + col
+                        args["%s_%s" % (key, j)] = cast(None, val[j])
+                    sql += (" AND " if i else "") + "(%s)" % col
+                elif val is None:
+                    op = {"=": "IS", "!=": "IS NOT", "<>": "IS NOT"}.get(op, op)
+                    sql += (" AND " if i else "") + "%s %s NULL" % (col, op)
                 else:
-                    args[key] = cast(col, dbval)
+                    args[key] = cast(col, val)
                     sql += (" AND " if i else "") + "%s %s :%s" % (col, op, key)
         if group:
             sql += " GROUP BY " + group
         if order:
-            make_direction = lambda c: (c if isinstance(c, basestring)
-                                        else "DESC" if c else "ASC")
             sql += " ORDER BY "
             for i, col in enumerate(order):
-                name = col[0] if isinstance(col, (list, tuple)) else col
-                direction = "" if name == col else " " + make_direction(col[1])
-                sql += (", " if i else "") + name + direction
-        if limit:
-            sql += " LIMIT %s" % (", ".join(map(str, limit)))
+                name = col if isinstance(col, basestring) else col[0]
+                sort = col[1] if name != col and len(col) > 1 else ""
+                if not isinstance(sort, basestring): sort = "DESC" if sort else ""
+                sql += (", " if i else "") + name + (" " if sort else "") + sort
+        for k, v in zip(("limit", "offset"), limit or ()):
+            if v is None: continue # for k, v
+            sql += " %s %s" % (k.upper(), v)
+            args[k] = v
 
+        print sql, args
         return sql, args
 
 
@@ -317,6 +346,7 @@ if "__main__" == __name__:
             print("Delete %s row where val=1, and roll back." % db.delete("test", val=1))
             raise db.Rollback
         print("Fetch all, order by val: %s." % db.fetchall("test", order="val"))
+        print("Select with expression: %s." % db.fetchall("test", EXPR=("id IN (SELECT id FROM test WHERE id in (?, ?, ?))", [1, 3, 5])))
         db.execute("DROP TABLE test")
         db.close()
     test()

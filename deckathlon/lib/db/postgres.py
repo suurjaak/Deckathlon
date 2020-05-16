@@ -123,6 +123,7 @@ class Queryable(QQ):
             """Returns (col, op, val, argkey)."""
             key = "%sW%s" % (re.sub("\\W+", "_", col), i)
             if "EXPR" == col.upper():
+                # ("EXPR", ("SQL", val))
                 col, op, val, key = val[0], "EXPR", val[1], "EXPRW%s" % i
             elif col.count("?") == argcount(val):
                 # ("any SQL with ? placeholders", val)
@@ -147,6 +148,8 @@ class Queryable(QQ):
         where  = [where] if isinstance(where, basestring) else where
         group  =   group if isinstance(group, basestring) else ", ".join(map(str, listify(group)))
         order  = [order] if isinstance(order, basestring) else order
+        order  = [order] if isinstance(order, (list, tuple)) \
+                 and len(order) == 2 and isinstance(order[1], bool) else order
         limit  = [limit] if isinstance(limit, (basestring, int, long)) else limit
         values = values if not isinstance(values, dict) else values.items()
         where  =  where if not isinstance(where,  dict)  else where.items()
@@ -172,6 +175,7 @@ class Queryable(QQ):
             for i, clause in enumerate(where):
                 if isinstance(clause, basestring): # "raw SQL with no arguments"
                     clause = (clause, )
+
                 if len(clause) == 1: # ("raw SQL with no arguments", )
                     col, op, val, key = clause[0], "EXPR", [], None
                 elif len(clause) == 2: # ("col", val) or ("col", ("op" or "expr with ?", val))
