@@ -498,7 +498,7 @@ var TEMPLATE_TABLE = `
             <table>
               <tr v-for="item in game.bids">
                 <td>{{ getName(item) }}:</td>
-                <td v-html="formatBid(item)"></td>
+                <td v-html="formatBid(item, false, true)"></td>
               </tr>
             </table>
           </div>

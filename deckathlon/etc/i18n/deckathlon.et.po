@@ -184,6 +184,9 @@ msgstr "pime"
 msgid  "Crawl"
 msgstr "Rooma"
 
+msgid  "crawl"
+msgstr "roomab"
+
 msgid  "Make facedown move"
 msgstr "Käi kaart tagurpidi"
 

@@ -533,7 +533,7 @@ class Table(object):
             expecteds = {} # {fk_player: {..}}
 
             # Set starting player, next from previous game's starting player
-            game0 = self._tx.fetchone("games", fk_table=table["id"], sequence=table["games"])
+            game0 = self._tx.fetchone("games", fk_table=table["id"], sequence=table["games"], order=[("dt_created", True)])
 
             if game0 and game0["score"] and util.get(template, "opts", "nextgame", "distribute"):
                 # Game starts with players exchanging cards
@@ -683,7 +683,7 @@ class Table(object):
         elif not data.get("data"):
             error, status = "Bid missing data", httplib.BAD_REQUEST
         else:
-            bid = {k: v for k, v in data["data"].items() if k in ("number", "pass", "suite")}
+            bid = {k: v for k, v in data["data"].items() if k in ("number", "pass", "suite", "blind")}
             do_pass = data["data"].get("pass")
             can_pass    = util.get(template, "opts", "bidding", "pass")
             pass_final  = util.get(template, "opts", "bidding", "pass_final")
@@ -802,6 +802,7 @@ class Table(object):
         else:
             bid = copy.deepcopy(game["bid"])
             bid.pop("blind", None)
+            bid["sell"] = True
             pchanges = {"expected": {}, "hand": player["hand0"], "status": ""}
             gchanges = {"talon": game["talon0"], "status": "bidding", "bid": {},
                         "fk_player": players[(players.index(player) + 1) % len(players)]["id"],
@@ -882,7 +883,7 @@ class Table(object):
 
         if not error and util.get(template, "opts", "nextgame", "distribute", "ranking"):
 
-            game0 = self._tx.fetchone("games", fk_table=table["id"], sequence=table["games"] - 1)
+            game0 = self._tx.fetchone("games", fk_table=table["id"], sequence=table["games"] - 1, order=[("dt_created", True)])
             ranking = {int(k): v for k, v in game0["score"].items()}
             playersx = sorted([x for x in players if x["id"] in ranking],
                               key=lambda x: ranking[x["id"]])
@@ -1175,7 +1176,7 @@ class Table(object):
         if template and not self._template:
             self._template = self._tx.fetchone("templates", id=self._table["fk_template"])
         if game and not self._game:
-            self._game = self._tx.fetchone("games", fk_table=self._table["id"], sequence=self._table["games"])
+            self._game = self._tx.fetchone("games", fk_table=self._table["id"], sequence=self._table["games"], order=[("dt_created", True)])
         if (players or player) and self._players is None:
             self._players = self._tx.fetchall("players", fk_table=self._table["id"], dt_deleted=None, order="sequence")
         if player and not self._player:
@@ -1418,7 +1419,7 @@ def game_points(template, table, game, players):
         if player["id"] != game["bid"].get("fk_player") \
         and popts.get("bidonly", "min") is not None:
             # Player at stage where they can only get points from bidding
-            score0 = util.get(table, "scores", -1, player["id"]) or 0
+            score0 = util.get(table, "scores", -1, str(player["id"])) or 0
             if score0 >= popts["bidonly"]["min"]: score = 0
 
         result[player["id"]] = score
