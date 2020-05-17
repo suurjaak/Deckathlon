@@ -17,7 +17,6 @@ import collections
 import ConfigParser as configparser
 import datetime
 import decimal
-import difflib
 import imghdr
 import io
 import json
@@ -27,7 +26,6 @@ import math
 import os
 import re
 import sqlite3
-import tarfile
 import urllib
 import urlparse
 import warnings
@@ -35,6 +33,7 @@ import warnings
 import pytz
 
 logger = logging.getLogger(__name__)
+
 
 
 class MaxLevelFilter(logging.Filter):

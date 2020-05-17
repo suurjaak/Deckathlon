@@ -1141,7 +1141,7 @@ Vue.component("page_table", {
         result += Cardery.tag(bid.suite);
       };
       if (bid.blind) result += " " + _("blind");
-      if (bid.sell && doSale)  result += " " + _("sale");
+      if (bid.sell && doSale) result += " " + _("sale");
       if (bid.redeal)  result += " " + _("redeal");
       return result;
     },

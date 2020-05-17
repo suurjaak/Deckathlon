@@ -490,7 +490,6 @@ class Transaction(TX, Queryable):
 
 
 
-
 if psycopg2:
     try:
         psycopg2.extensions.register_type(psycopg2.extensions.UNICODE)

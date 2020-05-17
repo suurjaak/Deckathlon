@@ -110,7 +110,7 @@ CREATE TABLE IF NOT EXISTS tables (
   fk_host        INTEGER   NOT NULL REFERENCES users (id),
   fk_template    INTEGER   NOT NULL REFERENCES templates (id),
   name           TEXT      NOT NULL,
-  shortid        TEXT      NOT NULL UNIQUE,
+  shortid        TEXT      NOT NULL,
   public         INTEGER   NOT NULL DEFAULT 0,
   opts           JSON      NOT NULL DEFAULT '{}',
   series         INTEGER   NOT NULL DEFAULT 0,
@@ -122,14 +122,15 @@ CREATE TABLE IF NOT EXISTS tables (
   bids_history   JSON      NOT NULL DEFAULT '[]',
   scores_history JSON      NOT NULL DEFAULT '[]',
   dt_created     TIMESTAMP NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f000+00:00', 'now')),
-  dt_changed     TIMESTAMP NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f000+00:00', 'now'))
+  dt_changed     TIMESTAMP NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f000+00:00', 'now')),
+  dt_deleted     TIMESTAMP
 );
 
 
 CREATE TABLE IF NOT EXISTS templates (
   id         INTEGER   PRIMARY KEY AUTOINCREMENT NOT NULL,
   fk_creator INTEGER   REFERENCES users (id),
-  name       TEXT      NOT NULL UNIQUE CHECK (LENGTH(name) > 0),
+  name       TEXT      NOT NULL CHECK (LENGTH(name) > 0),
   opts       JSON      NOT NULL DEFAULT '{}',
   dt_created TIMESTAMP NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f000+00:00', 'now')),
   dt_changed TIMESTAMP NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f000+00:00', 'now')),

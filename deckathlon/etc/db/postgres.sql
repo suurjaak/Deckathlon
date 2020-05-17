@@ -61,8 +61,8 @@ CREATE TABLE online (
   dt_online  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   dt_created TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   dt_changed TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (id),
-  UNIQUE (fk_user, fk_table)
+  UNIQUE (fk_user, fk_table),
+  PRIMARY KEY (id)
 );
 
 
@@ -117,7 +117,7 @@ CREATE TABLE tables (
   fk_host        BIGINT    NOT NULL,
   fk_template    BIGINT    NOT NULL,
   name           TEXT      NOT NULL,
-  shortid        TEXT      NOT NULL UNIQUE,
+  shortid        TEXT      NOT NULL,
   public         BOOLEAN   NOT NULL DEFAULT FALSE,
   opts           JSONB     NOT NULL DEFAULT '{}',
   series         INTEGER   NOT NULL DEFAULT 0,
@@ -130,6 +130,7 @@ CREATE TABLE tables (
   scores_history JSONB     NOT NULL DEFAULT '[]',
   dt_created     TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   dt_changed     TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  dt_deleted     TIMESTAMP,
   PRIMARY KEY (id)
 );
 
@@ -137,7 +138,7 @@ CREATE TABLE tables (
 CREATE TABLE templates (
   id         BIGSERIAL,
   fk_creator BIGINT,
-  name       TEXT      NOT NULL UNIQUE CHECK (LENGTH(name) > 0),
+  name       TEXT      NOT NULL CHECK (LENGTH(name) > 0),
   opts       JSONB     NOT NULL DEFAULT '{}',
   dt_created TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
   dt_changed TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),

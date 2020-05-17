@@ -71,14 +71,6 @@ can be used by keeping a reference to the connection:
     d2.insert("bars", val="bar")
 
 
-Default row factory is dict, can be overridden via init or Database.row_factory:
-
-    db.init(":memory:", row_factory=sqlite3.Row)
-    db.close()
-    mydb = db.init(":memory:")
-    mydb.row_factory = sqlite3.Row
-
-
 ------------------------------------------------------------------------------
 This file is part of Deckathlon - card game website.
 Released under the MIT License.
