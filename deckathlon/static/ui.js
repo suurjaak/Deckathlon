@@ -1272,7 +1272,6 @@ Vue.component("page_table", {
         && JSON.stringify(self.player.hand) == JSON.stringify(self.player.hand0)) sound = "deal";
       };
 
-      // @todo kehvaste veel.. bidding -> distributing -> move on vahepeal kopp
       if (!sound && "games" == type) {
 
         if (!Util.isEmpty(self.game) && !Util.isEmpty(self.player)
@@ -1570,7 +1569,7 @@ Vue.component("page_table", {
     /** Leaves table as player. */
     onLeaveTable: function() {
       var self = this;
-      AppActions.dialog(_("Leave table?"), {cancel: true, onclose: function(result) {
+      AppActions.dialog(_("Leave table? You will no longer be a player."), {cancel: true, onclose: function(result) {
         if (!result) return;
 
         var player = Util.merge(self.player, {fk_user: null});

@@ -145,8 +145,8 @@ msgstr "Katkesta mäng?"
 msgid  "Leave table"
 msgstr "Lahku lauast"
 
-msgid  "Leave table?"
-msgstr "Lahku lauast?"
+msgid  "Leave table? You will no longer be a player."
+msgstr "Lahku lauast? Pärast seda sa pole enam lauas mängija."
 
 msgid  "Reset game"
 msgstr "Alusta mängu otsast peale"
