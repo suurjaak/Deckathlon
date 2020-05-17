@@ -241,6 +241,11 @@ body.index #appdialog select {
   height:           100%;
   position:         relative;
 }
+#table h3 {
+  background:       green;
+  width:            fit-content;
+  z-index:          1;
+}
 #table > div.controls {
   position:         absolute;
   bottom:           0;
