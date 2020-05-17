@@ -16,7 +16,7 @@ import os
 """Program version."""
 Title = "Deckathlon"
 Name = "deckathlon"
-Version = "0.1.dev21"
+Version = "0.1.dev22"
 VersionDate = "17.05.2019"
 
 """Application code root path."""

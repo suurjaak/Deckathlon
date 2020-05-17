@@ -652,8 +652,10 @@ var TEMPLATE_TABLE = `
       <div v-if="player" class="player me">
         <div v-bind:class="getClass('name', player)">{{ getName(player) }}</div>
         <div class="cards"
-             v-on:dragover   ="onDragCardTo(player.id, $event)"
-             v-on:drop       ="onDropCard(player.id, $event)" >
+             v-on:dragover="onDragCardTo(player.id, $event)"
+             v-on:drop    ="onDropCard(player.id, $event)" 
+             v-on:auxclick="onHighlightNew"
+             v-on:wheel   ="onHighlightNew" >
           <div v-for="card in getData('hand', player)" v-html="Cardery.tag(card)"
                v-bind:draggable="draggable(card)"
                v-on:dragstart  ="onDragCardStart(player.id, card, $event)"
@@ -819,6 +821,7 @@ Vue.component("page_table", {
       move:         {},   // Current move (or bid) being made
       drag:         {},   // Current dragging as {playerid, card}
       menu:         {},   // Table settings-menu current state
+      flags:        {},   // Various temporary flags like "highlightnew"
       unsubscribe:  [],   // Data listener unsubscribers
     };
   },
@@ -1201,10 +1204,8 @@ Vue.component("page_table", {
          if (self.offline[a.fk_user]) result += " offline";
       } else if ("card" == name) {
          result = "card";
-         if ("ended" != self.game.status && !Util.isEmpty(self.player.hand) 
-         && Util.isEmpty(self.game.tricks) && Util.isEmpty(self.game.trick) && Util.isEmpty(self.move)
-         && Util.difference(self.player.hand, self.player.hand0).indexOf(a) >= 0
-         && (Util.get(self.game, "bid", "fk_player") != self.player.id || "ongoing" != self.game.status)) result += " pulse";
+         if (self.flags.highlightnew
+         && Util.difference(self.player.hand, self.player.hand0).indexOf(a) >= 0) result += " pulse";
       };
       return result;
     },
@@ -1300,6 +1301,13 @@ Vue.component("page_table", {
         };
       };
 
+
+      if ("games" == type || "players" == type) {
+         if ("ended" != self.game.status && Util.isEmpty(self.game.tricks)
+         && Util.isEmpty(self.game.trick) && Util.isEmpty(self.move)
+         && (Util.get(self.game, "bid", "fk_player") != self.player.id
+             || "ongoing" != self.game.status)) self.onHighlightNew();
+      };
 
       var file = self.$options.sounds[sound];
       if (file && "ended" != self.game.status) new Audio(Data.db.settings.get("staticURL") + "media/" + file).play();
@@ -1417,6 +1425,20 @@ Vue.component("page_table", {
       if ("games"  == type) window.setTimeout(self.scrollToBottom, 500, "bid");
       self.processDataUpdate(type);
       self.setPageTitle();
+    },
+
+
+    /** Handler for clicking to highlight new cards in hand. */
+    onHighlightNew: function() {
+      var self = this;
+      if (self.flags.highlightnew || !self.player 
+      || Util.isEmpty(self.player.hand0) || Util.isEmpty(self.player.hand)
+      || !self.player.hand0.some(function(x) { return x.trim(); })
+      || !self.player.hand.some(function(x) { return x.trim(); })
+      || !Util.difference(self.player.hand, self.player.hand0).length) return;
+
+      Vue.set(self.flags, "highlightnew", true);
+      window.setTimeout(function() { Vue.delete(self.flags, "highlightnew"); }, 3000);
     },
 
 
