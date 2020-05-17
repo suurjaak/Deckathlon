@@ -194,7 +194,6 @@ class Queryable(QQ):
             sql += " %s %s" % (k.upper(), v)
             args[k] = v
 
-        print sql, args
         return sql, args
 
 

@@ -1202,7 +1202,7 @@ class Table(object):
             self._table_users = self._tx.fetchall("table_users", fk_table=self._table["id"], dt_deleted=None)
         if users and (refresh or not self._users):
             where = {"EXPR": ("id IN (SELECT fk_user FROM table_users "
-                     "WHERE fk_table = ? AND dt_deleted = ?)", [self._table["id"], None])}
+                     "WHERE fk_table = ? AND dt_deleted IS NULL)", [self._table["id"]])}
             self._users = self._tx.fetchall("users", where=where)
 
         if template:    result.append(self._template)
@@ -1510,7 +1510,7 @@ def bid_beyond_limit(template, game, player, bid, side):
 def is_game_complete(template, table):
     """Returns whether table has reached total game completion (e.g. max score)."""
     result = False
-    copts = util.get("template", "opts", "complete") or {}
+    copts = util.get(template, "opts", "complete") or {}
 
     if copts.get("score") and table["scores"]:
         for score in table["scores"][-1].values():
