@@ -7,7 +7,7 @@
  *
  * @author    Erki Suurjaak
  * @created   18.04.2020
- * @modified  15.05.2020
+ * @modified  17.05.2020
  */
 
 body {
@@ -676,6 +676,9 @@ div.table div.scores {
   position:         absolute;
   top:              -30pt;
   right:            0;
+}
+div.table div.scores div.title {
+  padding:          5pt 0;
 }
 div.table div.scores table {
   border-collapse:  separate;

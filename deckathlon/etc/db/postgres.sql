@@ -6,7 +6,7 @@
 --
 -- @author    Erki Suurjaak
 -- @created   08.05.2020
--- @modified  14.05.2020
+-- @modified  17.05.2020
 
 CREATE OR REPLACE FUNCTION update_row_timestamp() RETURNS trigger
     LANGUAGE plpgsql
@@ -22,6 +22,7 @@ CREATE TABLE games (
   id         BIGSERIAL,
   fk_table   BIGINT    NOT NULL,
   fk_player  BIGINT,
+  series     INTEGER   NOT NULL DEFAULT 0,
   sequence   BIGINT    NOT NULL DEFAULT 0,
   status     TEXT      NOT NULL DEFAULT 'new',
   opts       JSONB     NOT NULL DEFAULT '{}',
@@ -119,6 +120,7 @@ CREATE TABLE tables (
   shortid        TEXT      NOT NULL UNIQUE,
   public         BOOLEAN   NOT NULL DEFAULT FALSE,
   opts           JSONB     NOT NULL DEFAULT '{}',
+  series         INTEGER   NOT NULL DEFAULT 0,
   games          BIGINT    NOT NULL DEFAULT 0,
   players        BIGINT    NOT NULL DEFAULT 0,
   status         TEXT      DEFAULT 'new',

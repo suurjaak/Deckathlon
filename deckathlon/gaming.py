@@ -8,7 +8,7 @@ Released under the MIT License.
 
 @author    Erki Suurjaak
 @created   19.04.2020
-@modified  16.05.2020
+@modified  17.05.2020
 ------------------------------------------------------------------------------
 """
 import collections
@@ -526,6 +526,7 @@ class Table(object):
 
             gamestatus = "bidding" if "bidding" in template["opts"] else "ongoing"
             game = {"deck": deck, "sequence": table["games"] + 1,
+                    "series": table["series"],
                     "status": gamestatus, "fk_table": table["id"],
                     "hands": {k: v for k, v in dist.items() if k != "talon"}}
             if "talon" in dist: game["talon"] = game["talon0"] = dist["talon"]
@@ -533,7 +534,8 @@ class Table(object):
             expecteds = {} # {fk_player: {..}}
 
             # Set starting player, next from previous game's starting player
-            game0 = self._tx.fetchone("games", fk_table=table["id"], sequence=table["games"], order=[("dt_created", True)])
+            game0 = self._tx.fetchone("games", fk_table=table["id"],
+                                      sequence=table["games"], series=table["series"])
 
             if game0 and game0["score"] and util.get(template, "opts", "nextgame", "distribute"):
                 # Game starts with players exchanging cards
@@ -615,7 +617,7 @@ class Table(object):
         else:
             gchanges = {"status": "ended", "fk_player": None}
             tchanges = {"status": "ended"}
-            self._tx.update("games", gchanges,  id=game["id"])
+            self._tx.update("games",  gchanges, id=game["id"])
             self._tx.update("tables", tchanges, id=table["id"])
             for p in players: self._tx.update("players", {"status": ""}, id=p["id"])
             self._tx.commit()
@@ -639,7 +641,9 @@ class Table(object):
             gchanges = {}
             tchanges = {"status": "new", "games": 0, "bids": [], "scores": []}
 
-            if "ended" != game["status"]: gchanges["status"] = "ended"
+            if game:
+                tchanges["series"] = table["series"] + 1
+                if "ended" != game["status"]: gchanges["status"] = "ended"
             if table["scores"]:
                 tchanges["scores_history"] = table["scores_history"] + [table["scores"]]
             if table["bids"]:
@@ -883,7 +887,8 @@ class Table(object):
 
         if not error and util.get(template, "opts", "nextgame", "distribute", "ranking"):
 
-            game0 = self._tx.fetchone("games", fk_table=table["id"], sequence=table["games"] - 1, order=[("dt_created", True)])
+            game0 = self._tx.fetchone("games", fk_table=table["id"],
+                                      sequence=table["games"] - 1, series=table["series"])
             ranking = {int(k): v for k, v in game0["score"].items()}
             playersx = sorted([x for x in players if x["id"] in ranking],
                               key=lambda x: ranking[x["id"]])
@@ -1137,12 +1142,10 @@ class Table(object):
             self._tx.update("players", pchanges, id=player["id"])
             if pchanges2: self._tx.update("players", pchanges2, id=player2["id"])
             if tchanges:  self._tx.update("tables",  tchanges,  id=table["id"])
-            table.update(tchanges)
+            game.update(gchanges); table.update(tchanges); player.update(pchanges)
+            if pchanges2: player2.update(pchanges2)
 
             if game_over:
-                game    = self._tx.fetchone("games",   fk_table=table["id"], order=[("dt_created", True)])
-                players = self._tx.fetchall("players", fk_table=table["id"], dt_deleted=None, order="sequence")
-
                 gchanges = {"status": "ended", "fk_player": table["fk_host"]}
                 tchanges = {"status": "ended"}
                 if game["bid"]:
@@ -1160,7 +1163,6 @@ class Table(object):
                 self._tx.update("games",   gchanges, id=game["id"])
                 self._tx.update("tables",  tchanges, id=table["id"])
                 for p in players: self._tx.update("players", {"dt_changed": util.utcnow()}, id=p["id"])
-                    
 
 
         return error, status
@@ -1176,7 +1178,8 @@ class Table(object):
         if template and not self._template:
             self._template = self._tx.fetchone("templates", id=self._table["fk_template"])
         if game and not self._game:
-            self._game = self._tx.fetchone("games", fk_table=self._table["id"], sequence=self._table["games"], order=[("dt_created", True)])
+            self._game = self._tx.fetchone("games", fk_table=self._table["id"],
+                                           sequence=self._table["games"], series=self._table["series"])
         if (players or player) and self._players is None:
             self._players = self._tx.fetchall("players", fk_table=self._table["id"], dt_deleted=None, order="sequence")
         if player and not self._player:

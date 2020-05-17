@@ -6,7 +6,7 @@
 --
 -- @author    Erki Suurjaak
 -- @created   08.05.2020
--- @modified  14.05.2020
+-- @modified  17.05.2020
 
 CREATE TABLE IF NOT EXISTS users (
   id         INTEGER   PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS games (
   id         INTEGER   PRIMARY KEY AUTOINCREMENT NOT NULL,
   fk_table   INTEGER   NOT NULL REFERENCES tables (id),
   fk_player  INTEGER   REFERENCES players (id),
+  series     INTEGER   NOT NULL DEFAULT 0,
   sequence   INTEGER   NOT NULL DEFAULT 0,
   status     TEXT      NOT NULL DEFAULT 'new',
   opts       JSON      NOT NULL DEFAULT '{}',
@@ -112,6 +113,7 @@ CREATE TABLE IF NOT EXISTS tables (
   shortid        TEXT      NOT NULL UNIQUE,
   public         INTEGER   NOT NULL DEFAULT 0,
   opts           JSON      NOT NULL DEFAULT '{}',
+  series         INTEGER   NOT NULL DEFAULT 0,
   games          INTEGER   NOT NULL DEFAULT 0,
   players        INTEGER   NOT NULL DEFAULT 0,
   status         TEXT      DEFAULT 'new',

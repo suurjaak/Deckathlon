@@ -8,7 +8,7 @@
  *
  * @author    Erki Suurjaak
  * @created   18.04.2020
- * @modified  15.05.2020
+ * @modified  17.05.2020
  */
 
 
@@ -684,9 +684,9 @@ var TEMPLATE_TABLE = `
       <div v-if="scoreable" class="scores" id="scores">
 
         <div v-for="(scores, i) in getData('scores')">
-          <div v-if="!Util.isEmpty(table.scores_history)">
+          <div v-if="!Util.isEmpty(table.scores_history)" class="title">
+            <hr v-if="i" />
             {{ _("Game series #{0}").format(i + 1) }}
-            <hr />
           </div>
           <table>
             <thead>
@@ -707,7 +707,7 @@ var TEMPLATE_TABLE = `
                 </td>
               </tr>
               <tr v-if="game && 'ended' != game.status && !Util.isEmpty(game.bid)">
-                <td class="index">{{ Util.isEmpty(scores) ? "" : getData("bids")[i].length + 1 }}</td>
+                <td class="index">{{ Util.isEmpty(table.scores) ? "" : getData("bids")[i].length + 1 }}</td>
                 <td v-for="playerx in players"></td>
                 <td class="bid">{{ formatBid(game.bid, true, false) }}</td>
               </tr>
