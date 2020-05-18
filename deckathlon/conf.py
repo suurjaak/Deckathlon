@@ -9,15 +9,15 @@ Released under the MIT License.
 
 @author      Erki Suurjaak
 @created     18.04.2020
-@modified    17.05.2020
+@modified    18.05.2020
 """
 import os
 
 """Program version."""
 Title = "Deckathlon"
 Name = "deckathlon"
-Version = "0.1.dev23"
-VersionDate = "17.05.2019"
+Version = "0.1.dev24"
+VersionDate = "18.05.2019"
 
 """Application code root path."""
 RootPath = ApplicationPath = os.path.dirname(os.path.abspath(__file__))

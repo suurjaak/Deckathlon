@@ -8,7 +8,7 @@ Released under the MIT License.
 
 @author    Erki Suurjaak
 @created   19.04.2020
-@modified  17.05.2020
+@modified  18.05.2020
 ------------------------------------------------------------------------------
 """
 import collections
@@ -581,14 +581,20 @@ class Table(object):
                 player0 = player
                 if game0:
                     player0id = None
-                    if game0["bids"]: # Next from previous game's first bidder
+                    if game0["bids"]: # Previous game's first bidder
                         player0id = game0["bids"][0]["fk_player"]
-                    elif game0["tricks"]: # Next from previous game's first mover
+                    elif game0["tricks"]: # Previous game's first mover
                         player0id = game0["tricks"][0][0]["fk_player"]
                     if player0id:
-                        player0 = next(x for x in players if x["id"] == player0id)
+                        player0 = next((x for x in players if x["id"] == player0id), player0)
+                if game0 and not game0["score"]:
+                    # Last game did not end properly: start with same player
+                    game["fk_player"] = player0["id"]
+                else:
+                    # Start with next from host if first in series,
+                    # or next from last game's first player
+                    game["fk_player"] = players[(players.index(player0) + 1) % len(players)]["id"]
 
-                game["fk_player"] = players[(players.index(player0) + 1) % len(players)]["id"]
 
             game["id"] = self._tx.insert("games", game)
 
@@ -599,7 +605,7 @@ class Table(object):
                     pchanges["status"] = "blind"
 
                 if p["id"] == game.get("fk_player"):
-                    pchanges["expected"] = get_expected_move(template, game, p)
+                    pchanges["expected"] = get_expected_move(template, game, players, p)
                 elif p["id"] in expecteds:
                     pchanges["expected"] = expecteds[p["id"]]
                 self._tx.update("players", pchanges, id=p["id"])
@@ -770,17 +776,15 @@ class Table(object):
 
                 if util.get(template["opts"], "bidding", "talon"):
                     # Bidding player wins talon
-                    player2id = winningbid["fk_player"]
-                    player2 = next((x for x in players if x["id"] == player2id), None)
+                    player2 = next(x for x in players if x["id"] == winningbid["fk_player"])
                     pchanges2 = {"hand": sort(template, player2["hand"] + game["talon"])}
-                    gchanges.update(talon=[], status="ongoing", fk_player=player2id)
+                    gchanges.update(talon=[], status="ongoing", fk_player=player2["id"])
 
                     if util.get(template["opts"], "bidding", "distribute"):
-                        distribute = {x["id"]: 1 for x in players if x["id"] != player2id}
-                        pchanges2["expected"] = dict(distribute=distribute, action="distribute")
                         gchanges["status"] = "distributing"
+                        pchanges2["expected"] = get_expected_move(template, dict(game, **gchanges), players, player2)
 
-                    self._tx.update("players", pchanges2, id=player2id)
+                    self._tx.update("players", pchanges2, id=player2["id"])
                 else:
                     gchanges["fk_player"] = None
                     if "bidder" == util.get(template["opts"], "lead", "0"):
@@ -952,7 +956,7 @@ class Table(object):
                         gchanges["fk_player"] = player2["id"]
 
                     gchanges["status"] = "ongoing"
-                    pchanges2 = {"expected": get_expected_move(template, dict(game, **gchanges), player)}
+                    pchanges2 = {"expected": get_expected_move(template, dict(game, **gchanges), players, player)}
                     self._tx.update("players", pchanges2, id=gchanges["fk_player"])
 
                 self._tx.update("games", gchanges, id=game["id"])
@@ -966,9 +970,9 @@ class Table(object):
                 for fk_player, cards in dist.items():
                     player2 = next(x for x in players if x["id"] == fk_player)
                     pchanges2 = {"hand": sort(template, player2["hand"] + cards)}
-                    self._tx.update("players", pchanges2, id=fk_player)
+                    self._tx.update("players", pchanges2, id=player2["id"])
 
-                pchanges["expected"] = get_expected_move(template, dict(game, **gchanges), player)
+                pchanges["expected"] = get_expected_move(template, dict(game, **gchanges), players, player)
                 pchanges["hand"] = drop(player["hand"], allgiven)
 
                 self._tx.update("games",   gchanges, id=game["id"])
@@ -1137,10 +1141,10 @@ class Table(object):
                     player3 = player2
                     if not player3["hand"]:
                         player3 = next_player_in_game(template, dict(game, **gchanges), players, player2)
-                        pchanges3["expected"] = get_expected_move(template, game, player3)
+                        pchanges3["expected"] = get_expected_move(template, dict(game, **gchanges), players, player3)
                         gchanges["fk_player"] = player3["id"]
                     else:
-                        pchanges2["expected"] = get_expected_move(template, game, player2)
+                        pchanges2["expected"] = get_expected_move(template, dict(game, **gchanges), players, player2)
                         gchanges["fk_player"] = player2["id"]
 
                 if util.get(template, "opts", "trick"):
@@ -1148,7 +1152,7 @@ class Table(object):
             else:
                 player2 = next_player_in_round(template, dict(game, **gchanges), players, player)
                 gchanges["fk_player"] = player2["id"]
-                pchanges2["expected"] = get_expected_move(template, dict(game, **gchanges), player2)
+                pchanges2["expected"] = get_expected_move(template, dict(game, **gchanges), players, player2)
 
             self._tx.update("games",   gchanges, id=game["id"])
             self._tx.update("players", pchanges, id=player["id"])
@@ -1628,13 +1632,20 @@ def has_move_right_amount(template, player, cards):
     return result
 
 
-def get_expected_move(template, game, player):
+def get_expected_move(template, game, players, player):
     """Returns player's next expected move, depending on game phase."""
     result = {}
 
     if "bidding" == game["status"]:
         if util.get(template, "opts", "bidding"):
             result["bid"] = True
+
+    elif "distributing" == game["status"]:
+        if  util.get(template["opts"], "bidding", "talon") \
+        and util.get(template["opts"], "bidding", "distribute") \
+        and player["id"] == game["fk_player"]:
+            distribute = {x["id"]: 1 for x in players if x["id"] != player["id"]}
+            result = {"action": "distribute", "distribute": distribute}
 
     elif "ongoing" == game["status"]:
         result["move"] = True
