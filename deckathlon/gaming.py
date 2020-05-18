@@ -1355,16 +1355,16 @@ def cmp_cards(template, a, b, sort=False):
     """
     result = 0
 
-    strengths = util.get(template, "opts", "strengths")
-    suites    = util.get(template, "opts", "suites")
+    levels = util.get(template, "opts", "levels")
+    suites = util.get(template, "opts", "suites")
 
     for category in util.listify(util.get(template, "opts", "sort") or []):
         if result: break # for category
 
         if "suite" == category and suites:
             result = suites.index(suite(a)) - suites.index(suite(b))
-        if "strength" == category and strengths:
-            result = strengths.index(level(a)) - strengths.index(level(b))
+        if "level" == category and levels:
+            result = levels.index(level(a)) - levels.index(level(b))
 
     if sort and not result and suites:
         result = suites.index(suite(a)) - suites.index(suite(b))
@@ -1574,7 +1574,7 @@ def level(card):
 
 def strength(template, card):
     """Returns card or level strength in template level strengths order."""
-    return util.get(template, "opts", "strengths").index(level(card))
+    return util.get(template, "opts", "levels").index(level(card))
 
 
 def points(template, card):
@@ -1661,7 +1661,7 @@ if "__main__" == __name__:
         import json
         template = {"opts": json.loads("""{
             "cards":     ["9D", "9H", "9S", "9C", "JD", "JH", "JS", "JC", "QD", "QH", "QS", "QC", "KD", "KH", "KS", "KC", "0D", "0H", "0S", "0C", "AD", "AH", "AS", "AC"],
-            "strengths": "9JQK0A",
+            "levels":    "9JQK0A",
             "suites":    "DHSC",
             "points":    {"9": 0, "0": 10, "J": 2, "Q": 3, "K": 4, "A": 11},
             "players":   [3, 4],
