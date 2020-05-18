@@ -13,7 +13,7 @@ Released under the MIT License.
 
 @author      Erki Suurjaak
 @created     18.04.2020
-@modified    08.05.2020
+@modified    18.05.2020
 %"""
 %from deckathlon import conf
 %from deckathlon.lib import util
@@ -46,10 +46,10 @@ Released under the MIT License.
 
 <script type="text/javascript">
 
-  var languages    = Util.jsonLoad("{{! util.json_dumps(langs, indent=None).replace('"', r'\"') }}");
-  var translations = Util.jsonLoad("{{! util.json_dumps(translations, indent=None).replace('"', r'\"') }}");
-  var typedata     = Util.jsonLoad("{{! util.json_dumps(data, indent=None).replace('"', r'\"') }}");
-  var typeschema   = Util.jsonLoad("{{! util.json_dumps(schema, indent=None).replace('"', r'\"') }}");
+  var languages    = Util.jsonLoad({{! repr(util.json_dumps(langs,        indent=None)) }});
+  var translations = Util.jsonLoad({{! repr(util.json_dumps(translations, indent=None)) }});
+  var typedata     = Util.jsonLoad({{! repr(util.json_dumps(data,         indent=None)) }});
+  var typeschema   = Util.jsonLoad({{! repr(util.json_dumps(schema,       indent=None)) }});
 
   Locale.init(translations);
   Data.configure({schema: typeschema, data: typedata, rootURL: (typedata.settings || {}).dataURL});
