@@ -1160,8 +1160,8 @@ Vue.component("page_table", {
     formatScore: function(scores, index, player) {
       var self = this;
       var result = scores[index][player.id];
-      if (index && Util.get(self.template, "opts", "points")) {
-        if (scores[index - 1][player.id] == scores[index][player.id])
+      if (Util.get(self.template, "opts", "points")) {
+        if (!index && !result || index && scores[index - 1][player.id] == scores[index][player.id])
           result = '—'; // Score same as previous
       };
       return result;
