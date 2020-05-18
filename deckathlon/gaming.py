@@ -1132,6 +1132,8 @@ class Table(object):
 
             if round_over:
                 player2 = round_winner(template, dict(game, **gchanges), players, gchanges["trick"])
+                if util.get(template, "opts", "trick"):
+                    pchanges2["tricks"] = copy.deepcopy(player2["tricks"]) + [gchanges["trick"]]
 
                 gchanges["discards"] = copy.deepcopy(game["discards"]) + [gchanges["trick"]]
                 gchanges["tricks"] = copy.deepcopy(game["tricks"]) + [gchanges["trick"]]
@@ -1146,9 +1148,6 @@ class Table(object):
                     else:
                         pchanges2["expected"] = get_expected_move(template, dict(game, **gchanges), players, player2)
                         gchanges["fk_player"] = player2["id"]
-
-                if util.get(template, "opts", "trick"):
-                    pchanges2["tricks"] = copy.deepcopy(player2["tricks"]) + [gchanges["trick"]]
             else:
                 player2 = next_player_in_round(template, dict(game, **gchanges), players, player)
                 gchanges["fk_player"] = player2["id"]
@@ -1295,8 +1294,9 @@ class Table(object):
 
         if faceup is None and field == "tricks":
             # Render only last trick visible during game
-            result = util.recursive_decode(value[:-1], [hider]) + value[-1:]
-            faceup = True
+            if is_game or game and value and value[-1] == util.get(game, "tricks", -1):
+                result = util.recursive_decode(value[:-1], [hider]) + value[-1:]
+                faceup = True
 
         if faceup is None and field in ("talon", "talon0"):
             # Reveal talon according to game template

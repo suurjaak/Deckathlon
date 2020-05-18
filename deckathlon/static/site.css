@@ -7,7 +7,7 @@
  *
  * @author    Erki Suurjaak
  * @created   18.04.2020
- * @modified  17.05.2020
+ * @modified  18.05.2020
  */
 
 body {
@@ -760,8 +760,8 @@ div.table div.scores thead tr:first-child th {
 #table div.player .discards div.card:last-child {
   width:            29pt;
 }
-#table div.player .discards div.card,
-#table div.player .tricks div.card {
+#table div.player .discards div.card[title],
+#table div.player .tricks div.card[title] {
   cursor:           pointer;
 }
 #table div.dialog div.dom,
@@ -773,6 +773,7 @@ div.table div.scores thead tr:first-child th {
   display:          flex;
   justify-content:  space-between;
   min-width:        300pt;
+  min-height:       75pt;
   width:            100%;
 }
 #table div.dialog div.dom .moves {

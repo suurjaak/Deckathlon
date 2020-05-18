@@ -8,7 +8,7 @@
  *
  * @author    Erki Suurjaak
  * @created   18.04.2020
- * @modified  17.05.2020
+ * @modified  18.05.2020
  */
 
 
@@ -640,9 +640,9 @@ var TEMPLATE_TABLE = `
         <fieldset v-if="playerx.tricks.length" class="tricks">
           <legend>{{ _("Tricks") }}</legend>
           <div class="cards">
-            <div v-for="(trick, j) in playerx.tricks" v-html="Cardery.tag(' ')"
-                 v-on:click="onShowPlayerTrick(playerx, j)"
-                 v-bind:title="game && 'ended' == game.status ? _('Show trick #{0}').format(j+1) : _('Show last trick')"
+            <div v-for="(trick, j) in playerx.tricks" v-html="Cardery.tag(Cardery.FACEDOWN)"
+                 v-on:click="isFaceUp(trick) ? onShowPlayerTrick(playerx, j) : null"
+                 v-bind:title="getTitle('trick', trick, j)"
                  class="card"></div>
           </div>
         </fieldset>
@@ -667,9 +667,9 @@ var TEMPLATE_TABLE = `
         <fieldset v-if="player.tricks.length" class="tricks">
           <legend>{{ _("Tricks") }}</legend>
           <div class="cards">
-            <div v-for="(trick, j) in player.tricks" v-html="Cardery.tag(' ')"
-                 v-on:click="onShowPlayerTrick(player, j)"
-                 v-bind:title="game && 'ended' == game.status ? _('Show trick #{0}').format(j+1) : _('Show last trick')"
+            <div v-for="(trick, j) in player.tricks" v-html="Cardery.tag(Cardery.FACEDOWN)"
+                 v-on:click="isFaceUp(trick) ? onShowPlayerTrick(player, j) : null"
+                 v-bind:title="getTitle('trick', trick, j)"
                  class="card"></div>
           </div>
         </fieldset>
@@ -677,7 +677,7 @@ var TEMPLATE_TABLE = `
         <fieldset v-if="game && game.discards.length && Util.get(template, 'opts', 'discards')" class="discards">
           <legend>{{ _("Discard pile") }}</legend>
           <div class="cards" v-bind:title="_('Show last discards')" v-on:click="onShowDiscards(null)">
-            <div v-for="_ in game.discards" v-html="Cardery.tag(' ')" class="card"></div>
+            <div v-for="_ in game.discards" v-html="Cardery.tag(Cardery.FACEDOWN)" class="card"></div>
           </div>
         </fieldset>
       </div>
@@ -1107,6 +1107,12 @@ Vue.component("page_table", {
     },
 
 
+    /** Returns whether cards in trick are face up for current player. */
+    isFaceUp: function(trick) {
+      return trick.every(function(x) { return !Util.isEmpty(x.cards) && x.cards.every(Cardery.faceup); });
+    },
+
+
     /** Returns whether it's player's turn. */
     isTurn: function(player) {
       if (!player) return;
@@ -1162,7 +1168,7 @@ Vue.component("page_table", {
     },
 
 
-    /** Returns data structure like "hand" or "hand0", depending n game state. */
+    /** Returns data structure like "hand" or "hand0", depending on game state. */
     getData: function(name, a) {
       var self = this;
       var result = null;
@@ -1253,6 +1259,19 @@ Vue.component("page_table", {
       Object.keys(move).some(function(k) {
         if (typeof(move[k]) == "boolean") return result = k;
       });
+      return result;
+    },
+
+
+    /** Returns title for element like "trick". */
+    getTitle: function(name, a, b) {
+      var self = this;
+      var result = null;
+      if ("trick" == name) {
+        if (self.isFaceUp(a)) {
+          result = (self.game && "ended" == self.game.status) ? _('Show trick #{0}').format(b+1) : _('Show last trick');
+        };
+      };
       return result;
     },
 
@@ -1432,8 +1451,8 @@ Vue.component("page_table", {
       var self = this;
       if (self.flags.highlightnew || !self.player 
       || Util.isEmpty(self.player.hand0) || Util.isEmpty(self.player.hand)
-      || !self.player.hand0.some(function(x) { return x.trim(); })
-      || !self.player.hand.some(function(x) { return x.trim(); })
+      || !self.player.hand0.some(Cardery.faceup)
+      || !self.player.hand.some(Cardery.faceup)
       || !Util.difference(self.player.hand, self.player.hand0).length) return;
 
       Vue.set(self.flags, "highlightnew", true);
@@ -2019,13 +2038,13 @@ var Cardery = new function() {
     "QS": "&#x1f0ad;", "QH": "&#x1f0bd;", "QD": "&#x1f0cd;", "QC": "&#x1f0dd;",
     "KS": "&#x1f0ae;", "KH": "&#x1f0be;", "KD": "&#x1f0ce;", "KC": "&#x1f0de;",
     "AS": "&#x1f0a1;", "AH": "&#x1f0b1;", "AD": "&#x1f0c1;", "AC": "&#x1f0d1;",
-    "X":  "&#x1f0cf;", // Joker
+    "X":  "&#x1f0cf;", // Basic joker
     "XX": "&#x1f0cf;", "YX": "&#x1f0cf;", "ZX": "&#x1f0cf;", // Unique jokers
     " ":  "&#x1f0a0;", // Card back
-    "D":  "&#x2666;",
-    "H":  "&#x2665;",
-    "S":  "&#x2660;",
-    "C":  "&#x2663;",
+    "D":  "&#x2666;",  // Diamonds suite
+    "H":  "&#x2665;",  // Hearts suite
+    "S":  "&#x2660;",  // Spades suite
+    "C":  "&#x2663;",  // Clubs suite
   };
   self.NAMES = {
     "C": "clubs",
@@ -2035,9 +2054,10 @@ var Cardery = new function() {
     "X": "joker",
     " ": "back",
   };
+  self.FACEDOWN = " ";
 
 
-  /** Returns glyph for card (&#x1f0bd; for "QH"). */
+  /** Returns glyph for card ("&#x1f0bd;" for "QH"). */
   self.glyph = function(card) {
     return self.ENTITIES[card];
   };
@@ -2054,9 +2074,14 @@ var Cardery = new function() {
     return dom ? result : result.outerHTML;
   };
 
-  /** Returns card suite name ('diamonds' for '*D') */
+  /** Returns card suite name ("diamonds" for "*D") */
   self.name = function(card) {
     return self.NAMES[card[card.length - 1]];
+  };
+
+  /** Returns whether the card is face up. */
+  self.faceup = function(card) {
+    return self.FACEDOWN != card;
   };
 
 };
