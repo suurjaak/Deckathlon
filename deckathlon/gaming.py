@@ -887,15 +887,15 @@ class Table(object):
             error, status = "Not player's turn", httplib.FORBIDDEN
         else:
             dist = {int(k): sort(template, v) for k, v in data["data"].items()}
-            expected = {int(k): v for k, v in player["expected"]["distribute"].items()}
-            allgiven = sort(template, [x for xx in dist.values() for x in xx])
+            expecteds = {int(k): v for k, v in player["expected"]["distribute"].items()}
+            allgiven  = sort(template, [x for xx in dist.values() for x in xx])
 
             if set(dist) - set(util.unwrap(players, "id")) \
-            or set(dist) - set(expected):
+            or set(dist) - set(expecteds):
                 error, status = "Unknown players", httplib.BAD_REQUEST
             elif len(drop(player["hand"], allgiven)) > len(player["hand"]) - len(allgiven):
                 error, status = "No such cards", httplib.BAD_REQUEST
-            for fk_player, count in () if error else expected.items():
+            for fk_player, count in () if error else expecteds.items():
                 if count != len(dist.get(fk_player) or []):
                     error, status = "Wrong amount being distributed", httplib.BAD_REQUEST
                     break # for fk_player
@@ -1638,7 +1638,7 @@ def get_expected_move(template, game, players, player):
 
     if "bidding" == game["status"]:
         if util.get(template, "opts", "bidding"):
-            result["bid"] = True
+            result["action"] = "bid"
 
     elif "distributing" == game["status"]:
         if  util.get(template["opts"], "bidding", "talon") \
@@ -1648,7 +1648,7 @@ def get_expected_move(template, game, players, player):
             result = {"action": "distribute", "distribute": distribute}
 
     elif "ongoing" == game["status"]:
-        result["move"] = True
+        result["action"] = "move"
         if util.get(template, "opts", "move", "cards"):
             result["cards"] = util.get(template, "opts", "move", "cards")
 
