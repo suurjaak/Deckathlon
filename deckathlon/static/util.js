@@ -8,7 +8,7 @@
  *
  * @author    Erki Suurjaak
  * @created   01.03.2015
- * @modified  14.05.2020
+ * @modified  18.05.2020
  */
 "use strict";
 
@@ -21,7 +21,7 @@ var Locale = new function(text) {
 
   var LocaleInner = function(text, args) {
     var result = (text in LocaleInner.dictionary) ? LocaleInner.dictionary[text] : text;
-    var args = Array.apply(null, arguments).slice(1);
+    var args = Array.isArray(args) ? args : Array.apply(null, arguments).slice(1);
     if (args.length) result = result.format.apply(result, args);
     return result;
   };

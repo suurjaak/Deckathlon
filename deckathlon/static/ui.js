@@ -164,8 +164,8 @@ var TEMPLATE_INDEX = `
                     v-bind:title="_('You are table host')"
                     class="tag">&copy;</span>
             </td>
-            <td>{{ Data.db.templates.rw.get(item.fk_template).name }}</td>
-            <td>{{ Data.db.users.rw.get(item.fk_host).username }}</td>
+            <td>{{ item.template }}</td>
+            <td>{{ item.host }}</td>
             <td>
               {{ item.players }}
               <span v-if="user && item.users.indexOf(user.id) >= 0"
@@ -201,7 +201,7 @@ var TEMPLATE_INDEX = `
           <td>
             <select v-model="table_template" id="table_template">
               <option></option>
-              <option v-for="item in templates" v-bind:key="item.id" v-bind:value="item.id">{{ item.name }}</option>
+              <option v-for="item in templates" v-bind:key="item.id" v-bind:value="item.id">{{ getTemplateName(item.id) }}</option>
             </select>
           </td>
         </tr>
@@ -246,7 +246,7 @@ Vue.component("index", {
   mounted: function() {
     var self = this;
     self.alltables = Data.db.tables.list().map(function(x) {
-      x.template = Data.db.templates.rw.get(x.fk_template).name;
+      x.template = self.getTemplateName(x.fk_template);
       x.host     = Data.db.users.rw.get(x.fk_host).username;
       return x;
     });
@@ -267,12 +267,25 @@ Vue.component("index", {
 
   methods: {
 
+    /**
+     * Returns template name, translated if possible.
+     */
+    getTemplateName: function(templateid) {
+      var self = this;
+      var template = Data.db.templates.rw.get(templateid);
+      var key = ["template", template.name, template.name].join("__");
+      var result = _(key);
+      if (result == key) result = template.name;
+      return result;
+    },
+
+
     onData: function(type) {
       var self = this;
       if ("user" == type) self.user = Data.db.user.get();
       else if ("tables" == type) {
         self.alltables = Data.db.tables.list().map(function(x) {
-          x.template = Data.db.templates.rw.get(x.fk_template).name;
+          x.template = self.getTemplateName(x.fk_template);
           x.host     = Data.db.users.rw.get(x.fk_host).username;
           return x;
         });
@@ -384,7 +397,7 @@ var TEMPLATE_FOOTER = `
 
     <a v-if="!Util.isEmpty(user)" v-on:click.prevent="onLogout"
        v-bind:href="Data.db.settings.get('rootURL') + 'logout'">
-       {{ _("Log out {0}").format(user.username) }}
+       {{ _("Log out {0}", user.username) }}
     </a>
 
   </div>
@@ -452,7 +465,7 @@ var TEMPLATE_TABLE = `
   <div v-if="table" id="table">
 
     <h3>
-      {{ _("Table: {0} (by {1}, playing {2})").format(table.name, Util.get(usermap, table.fk_host, "username"), template.name) }}
+      {{ _("Table: {0} (by {1}, playing {2})", table.name, Util.get(usermap, table.fk_host, "username"), _(template.name)) }}
       <button v-if="player && player.fk_user == table.fk_host"
               v-on:click="onOpenTableMenu" v-bind:title="_('Open table settings')" class="menu">&#x2630;</button>
     </h3>
@@ -567,7 +580,7 @@ var TEMPLATE_TABLE = `
               <input v-else type="checkbox" v-model="move.crawl" />
               {{ _("Crawl") }}
             </label>
-            <label v-for="special in specialables" v-bind:class="special" v-bind:title="_('Make {0}').format(special)">
+            <label v-for="special in specialables" v-bind:class="special" v-bind:title="_('Make {0}', special)">
               <input type="checkbox" v-model="move[special]" />
               {{ _(special.capitalize()) }}
             </label>
@@ -629,7 +642,7 @@ var TEMPLATE_TABLE = `
 
       <div v-for="(playerx, i) in otherplayers" v-bind:class="getClass('player', i)">
         <div v-bind:class="getClass('name', playerx)"
-             v-bind:title="offline[playerx.fk_user] ? _('Offline since {0}').format(offline[playerx.fk_user].strftime('%H:%M, %d.%m.%Y')) : ''">
+             v-bind:title="offline[playerx.fk_user] ? _('Offline since {0}', offline[playerx.fk_user].strftime('%H:%M, %d.%m.%Y')) : ''">
           {{ getName(playerx) }}
           <span v-if="offline[playerx.fk_user]" class="offline"></span>
         </div>
@@ -688,7 +701,7 @@ var TEMPLATE_TABLE = `
         <div v-for="(scores, i) in getData('scores')">
           <div v-if="!Util.isEmpty(table.scores_history)" class="title">
             <hr v-if="i" />
-            {{ _("Game series #{0}").format(i + 1) }}
+            {{ _("Game series #{0}", i + 1) }}
           </div>
           <table>
             <thead>
@@ -1092,6 +1105,20 @@ Vue.component("page_table", {
   methods: {
 
 
+    /**
+     * Translate function, trying for template-specific translation first.
+     */
+    _: function(text, args) {
+      var self = this;
+      var key = self.template ? ["template", self.template.name, text].join("__") : text;
+      var result = _(key);
+      if (result == key && key != text) result = _(text);
+      var args = Array.isArray(args) ? args : Array.apply(null, arguments).slice(1);
+      if (args.length) result = result.format.apply(result, args);
+      return result;
+    },
+
+
     /** Returns whether card is draggable. */
     draggable: function(card) {
       var self = this;
@@ -1145,13 +1172,13 @@ Vue.component("page_table", {
 
       var result = "";
       if (doUser) result += self.getName(bid) + " ";
-      result += bid.pass ? _("pass") : (bid.number) || "";
+      result += bid.pass ? self._("pass") : (bid.number) || "";
       if (Util.get(self.template, "opts", "bidding", "suite") && bid.suite) {
         result += Cardery.tag(bid.suite);
       };
-      if (bid.blind) result += " " + _("blind");
-      if (bid.sell && doSale) result += " " + _("sale");
-      if (bid.redeal)  result += " " + _("redeal");
+      if (bid.blind) result += " " + self._("blind");
+      if (bid.sell && doSale) result += " " + self._("sale");
+      if (bid.redeal)  result += " " + self._("redeal");
       return result;
     },
 
@@ -1246,7 +1273,7 @@ Vue.component("page_table", {
       if (player)   user   = self.usermap[player.fk_user];
       if (user)     result = user.username;
       else if (playerid) self.players.some(function(x, i) {
-        if (x["id"] == playerid) return result = _("Player #{0}").format(i + 1);
+        if (x["id"] == playerid) return result = self._("Player #{0}", i + 1);
       });
       return result;
     },
@@ -1269,7 +1296,7 @@ Vue.component("page_table", {
       var result = null;
       if ("trick" == name) {
         if (self.isFaceUp(a)) {
-          result = (self.game && "ended" == self.game.status) ? _('Show trick #{0}').format(b+1) : _('Show last trick');
+          result = (self.game && "ended" == self.game.status) ? self._('Show trick #{0}', b+1) : self._('Show last trick');
         };
       };
       return result;
@@ -1347,7 +1374,7 @@ Vue.component("page_table", {
 
           if ("join" == request.type && "rejected" == request.status) {
             next = false;
-            AppActions.dialog(_("Request to join game was rejected."), {onclose: processNext.bind(self, request)});
+            AppActions.dialog(self._("Request to join game was rejected."), {onclose: processNext.bind(self, request)});
 
             Util.set(request, true, "opts", "processed", self.user.id);
             DataActions.update("requests", request);
@@ -1360,8 +1387,8 @@ Vue.component("page_table", {
           if ("join" == request.type) {
             next = false;
             AppActions.dialog(
-              _("User '{0}' wishes to join the game.").format(self.getName(request)), {
-                ok: "Accept", cancel: "Reject",
+              self._("User '{0}' wishes to join the game.", self.getName(request)), {
+                ok: self._("Accept"), cancel: self._("Reject"),
                 modal: true, onclose: function(result) {
                   request.status = result ? "accepted" : "rejected";
                   Util.set(request, true, "opts", "processed", self.user.id);
@@ -1369,7 +1396,7 @@ Vue.component("page_table", {
                   DataActions.update("requests", request);
                   DataActions.save("requests", request, null, function(err, req) {
                     console.log("Error accepting request.", err, req);
-                    AppActions.dialog(_(err));
+                    AppActions.dialog(self._(err));
                   });
 
                   processed[request.id] = true;
@@ -1465,7 +1492,7 @@ Vue.component("page_table", {
       var self = this;
       self.menu = {"open": true, table: {"name": self.table.name, "public": self.table.public, "opts": self.table.opts}};
 
-      AppActions.dialog(_("Settings"), {cancel: true, onclose: function(result) {
+      AppActions.dialog(self._("Settings"), {cancel: true, onclose: function(result) {
         var data = self.menu.table;
         self.menu = {};
         if (!result) return;
@@ -1473,7 +1500,7 @@ Vue.component("page_table", {
         data.id = self.table.id;
         DataActions.save("tables", data, null, function(err, req) {
           console.log("Error saving table.", err, req);
-          AppActions.dialog(_(err));
+          AppActions.dialog(self._(err));
         });
       }});
     },
@@ -1571,15 +1598,15 @@ Vue.component("page_table", {
     /** Requests to join game. */
     onJoinGame: function() {
       var self = this;
-      AppActions.dialog(_("Join game?"), {cancel: true, onclose: function(result) {
+      AppActions.dialog(self._("Join game?"), {cancel: true, onclose: function(result) {
         if (!result) return;
 
         var data = {fk_table: self.table.id, type: "join"};
         DataActions.save("requests", data, function() {
-          AppActions.dialog(_("Sent request to join game."));
+          AppActions.dialog(self._("Sent request to join game."));
         }, function(err, req) {
           console.log("Error joining game.", err, req);
-          AppActions.dialog(_(err));
+          AppActions.dialog(self._(err));
         });
       }});
     },
@@ -1588,7 +1615,7 @@ Vue.component("page_table", {
     /** Leaves table as player. */
     onLeaveTable: function() {
       var self = this;
-      AppActions.dialog(_("Leave table? You will no longer be a player."), {cancel: true, onclose: function(result) {
+      AppActions.dialog(self._("Leave table? You will no longer be a player."), {cancel: true, onclose: function(result) {
         if (!result) return;
 
         var player = Util.merge(self.player, {fk_user: null});
@@ -1596,7 +1623,7 @@ Vue.component("page_table", {
           document.location.href = Data.db.settings.get("rootURL");
         }, function(err, req) {
           console.log("Error leaving table.", err, req);
-          AppActions.dialog(_(err));
+          AppActions.dialog(self._(err));
         });
       }});
     },
@@ -1608,12 +1635,12 @@ Vue.component("page_table", {
       var player = self.playermap[self.menu.table.fk_player];
       if (!player) return;
 
-      AppActions.dialog(_("Drop player '{0}' from game?").format(self.getName(player)), {cancel: true, onclose: function(result) {
+      AppActions.dialog(self._("Drop player '{0}' from game?", self.getName(player)), {cancel: true, onclose: function(result) {
         if (!result) return;
 
         DataActions.remove("players", player, null, function(err, req) {
           console.log("Error dropping player.", err, req);
-          AppActions.dialog(_(err));
+          AppActions.dialog(self._(err));
         });
       }});
     },
@@ -1626,13 +1653,13 @@ Vue.component("page_table", {
       var player = user ? Data.db.players.next({fk_user: user.id}) : null;
       if (!player) return;
 
-      AppActions.dialog(_("Kick user '{0}' from game?").format(self.getName(player)), {cancel: true, onclose: function(result) {
+      AppActions.dialog(self._("Kick user '{0}' from game?", self.getName(player)), {cancel: true, onclose: function(result) {
         if (!result) return;
 
         player.fk_user = null;
         DataActions.save("players", player, null, function(err, req) {
           console.log("Error kicking user out.", err, req);
-          AppActions.dialog(_(err));
+          AppActions.dialog(self._(err));
         });
       }});
     },
@@ -1642,17 +1669,17 @@ Vue.component("page_table", {
     onStartGame: function() {
       var self = this;
 
-      AppActions.dialog(_("Deal cards and start a new game?"), {cancel: true, onclose: function(result) {
+      AppActions.dialog(self._("Deal cards and start a new game?"), {cancel: true, onclose: function(result) {
         if (!result) return;
 
-        AppActions.dialog(_("Starting game.."), {modal: true, ok: false});
+        AppActions.dialog(self._("Starting game.."), {modal: true, ok: false});
 
         var data = {action: "start", fk_table: self.table.id};
         Data.query({url: "actions", data: data}).success(function() {
           AppActions.dialog();
         }).error(function(err, req) {
           console.log("Error starting game.", err, req);
-          AppActions.dialog(_(err));
+          AppActions.dialog(self._(err));
         });
       }});
     },
@@ -1661,7 +1688,7 @@ Vue.component("page_table", {
     /** Carries out game action: end game. */
     onEndGame: function() {
       var self = this;
-      AppActions.dialog(_("End game?"), {cancel: true, onclose: function(result) {
+      AppActions.dialog(self._("End game?"), {cancel: true, onclose: function(result) {
         if (!result) return;
 
         var data = {action: "end", fk_table: self.table.id};
@@ -1669,7 +1696,7 @@ Vue.component("page_table", {
           AppActions.dialog();
         }).error(function(err, req) {
           console.log("Error ending game.", err, req);
-          AppActions.dialog(_(err));
+          AppActions.dialog(self._(err));
         });
       }});
     },
@@ -1685,7 +1712,7 @@ Vue.component("page_table", {
         if (!result) return;
 
         if ("complete" != self.table.status && !Util.isEmpty(self.table.scores)) AppActions.dialog(
-          _("Are you really sure you want to reset the game series? This will lose the current scores."),
+          self._("Are you really sure you want to reset the game series? This will lose the current scores."),
           {cancel: true, onclose: action}
         );
         else action(result);
@@ -1699,11 +1726,11 @@ Vue.component("page_table", {
           AppActions.dialog();
         }).error(function(err, req) {
           console.log("Error resetting table.", err, req);
-          AppActions.dialog(_(err));
+          AppActions.dialog(self._(err));
         });
       };
 
-      AppActions.dialog(_("Reset game series and restart?"), {cancel: true, onclose: confirm});
+      AppActions.dialog(self._("Reset game series and restart?"), {cancel: true, onclose: confirm});
     },
 
 
@@ -1714,7 +1741,7 @@ Vue.component("page_table", {
 
       Data.query({url: "actions", data: data}).error(function(err, req) {
         console.log("Error looking at hand.", err, req);
-        AppActions.dialog(_(err));
+        AppActions.dialog(self._(err));
       });
     },
 
@@ -1725,21 +1752,21 @@ Vue.component("page_table", {
 
       var any = ("ended" == self.game.status);
       if (any) {
-        var text = _("Player '{0}' trick #{1}:").format(self.getName(player), index + 1);
+        var text = self._("Player '{0}' trick #{1}:", self.getName(player), index + 1);
         var trick = player.tricks[index];
       } else {
-        var text = _("Player '{0}' last trick:").format(self.getName(player));
+        var text = self._("Player '{0}' last trick:", self.getName(player));
         var trick = player.tricks[player.tricks.length - 1];
       };
 
       var cards = trick.map(function(move) {
         return Util.createElement("div", {"class": "move"}, [
-          Util.createElement("div", {"class": "name"}, _(self.getName(move))),
+          Util.createElement("div", {"class": "name"}, self._(self.getName(move))),
         ].concat(move.cards.map(function(card) {
             return Cardery.tag(card, true);
           })).concat([
             self.getMoveSpecial(move) ? 
-            Util.createElement("div", {"class": "special"}, _(self.getMoveSpecial(move))) :
+            Util.createElement("div", {"class": "special"}, self._(self.getMoveSpecial(move))) :
             null
           ]).filter(Boolean)
         );
@@ -1747,11 +1774,11 @@ Vue.component("page_table", {
 
       AppActions.dialog(text, {dom: Util.createElement("div", {"class": "trick"}, [
         Util.createElement("div", {"class": "prev"},
-          any && index ? Util.createElement("button", {"onclick": self.onShowPlayerTrick.bind(self, player, index-1), "title": _("Show previous")}, "<") : "",
+          any && index ? Util.createElement("button", {"onclick": self.onShowPlayerTrick.bind(self, player, index-1), "title": self._("Show previous")}, "<") : "",
         ),
         Util.createElement("div", {"class": "moves"}, cards),
         Util.createElement("div", {"class": "next"},
-          any && (index < player.tricks.length - 1) ? Util.createElement("button", {"onclick": self.onShowPlayerTrick.bind(self, player, index+1), "title": _("Show next")}, ">") : "",
+          any && (index < player.tricks.length - 1) ? Util.createElement("button", {"onclick": self.onShowPlayerTrick.bind(self, player, index+1), "title": self._("Show next")}, ">") : "",
         ),
       ])});
     },
@@ -1768,7 +1795,7 @@ Vue.component("page_table", {
       var cards = discard.map(function(move) {
         if (!move.cards) return "";
         return Util.createElement("div", {"class": "move"}, [
-          Util.createElement("div", {"class": "name"}, _(self.getName(move))),
+          Util.createElement("div", {"class": "name"}, self._(self.getName(move))),
           Util.createElement("div", {"class": "cards"}, move.cards.map(function(card) {
             return Util.createElement("div", {"class": "card"}, Cardery.tag(card, true));
           }))
@@ -1776,13 +1803,13 @@ Vue.component("page_table", {
       }).filter(Boolean);
 
       var any = ("ended" == self.game.status);
-      AppActions.dialog(_("Discards #{0}:").format(index + 1), {dom: Util.createElement("div", {"class": "discard"}, [
+      AppActions.dialog(self._("Discards #{0}:", index + 1), {dom: Util.createElement("div", {"class": "discard"}, [
         Util.createElement("div", {"class": "prev"},
-          any && index ? Util.createElement("button", {"onclick": self.onShowDiscards.bind(self, index-1), "title": _("Show previous")}, "<") : "",
+          any && index ? Util.createElement("button", {"onclick": self.onShowDiscards.bind(self, index-1), "title": self._("Show previous")}, "<") : "",
         ),
         Util.createElement("div", {"class": "moves"}, cards),
         Util.createElement("div", {"class": "next"},
-          any && (index < self.game.discards.length - 1) ? Util.createElement("button", {"onclick": self.onShowDiscards.bind(self, index+1), "title": _("Show next")}, ">") : "",
+          any && (index < self.game.discards.length - 1) ? Util.createElement("button", {"onclick": self.onShowDiscards.bind(self, index+1), "title": self._("Show next")}, ">") : "",
         ),
       ])});
     },
@@ -1802,7 +1829,7 @@ Vue.component("page_table", {
         self.move = {};
       }).error(function(err, req) {
         console.log("Error making bid.", err, req);
-        AppActions.dialog(_(err));
+        AppActions.dialog(self._(err));
       }).complete(function() {
         evt.target.disabled = false;
       });
@@ -1824,7 +1851,7 @@ Vue.component("page_table", {
         self.move = {};
       }).error(function(err, req) {
         console.log("Error making move.", err, req);
-        AppActions.dialog(_(err));
+        AppActions.dialog(self._(err));
       }).complete(function() {
         evt.target.disabled = false;
       });
@@ -1844,7 +1871,7 @@ Vue.component("page_table", {
         self.move = {};
       }).error(function(err, req) {
         console.log("Error distributing.", err, req);
-        AppActions.dialog(_(err));
+        AppActions.dialog(self._(err));
       }).complete(function() {
         evt.target.disabled = false;
       });
@@ -1860,7 +1887,7 @@ Vue.component("page_table", {
         return Util.createElement("div", {"class": "card"}, Cardery.tag(card, true));
       }));
 
-      AppActions.dialog(_("Put the talon cards on sale?"), {cancel: true, dom: dom, onclose: function(result) {
+      AppActions.dialog(self._("Put the talon cards on sale?"), {cancel: true, dom: dom, onclose: function(result) {
         if (!result) return evt.target.disabled = false;
 
         var data = {action: "sell", fk_table: self.table.id};
@@ -1870,7 +1897,7 @@ Vue.component("page_table", {
           self.hand = self.player.hand0;
         }).error(function(err, req) {
           console.log("Error putting on sale.", err, req);
-          AppActions.dialog(_(err));
+          AppActions.dialog(self._(err));
         }).complete(function() {
           evt.target.disabled = false;
         });
@@ -1887,7 +1914,7 @@ Vue.component("page_table", {
         return Util.createElement("div", {"class": "card"}, Cardery.tag(card, true));
       }));
 
-      AppActions.dialog(_("Demand redeal?"), {cancel: true, dom: dom, onclose: function(result) {
+      AppActions.dialog(self._("Demand redeal?"), {cancel: true, dom: dom, onclose: function(result) {
         if (!result) return evt.target.disabled = false;
 
         var data = {action: "redeal", fk_table: self.table.id};
@@ -1898,7 +1925,7 @@ Vue.component("page_table", {
           Vue.set(self.game, "status", "ended");
         }).error(function(err, req) {
           console.log("Error demanding redeal.", err, req);
-          AppActions.dialog(_(err));
+          AppActions.dialog(self._(err));
         }).complete(function() {
           evt.target.disabled = false;
         });
@@ -1934,8 +1961,8 @@ var TEMPLATE_APPDIALOG = `
       <slot></slot>
 
       <div class="buttons">
-        <button v-if="ok"     v-on:click="onClose(true)" ref="ok">{{ _(oklabel) }}</button>
-        <button v-if="cancel" v-on:click="onClose(false)">{{ _(cancellabel) }}</button>
+        <button v-if="ok"     v-on:click="onClose(true)" ref="ok">{{ oklabel }}</button>
+        <button v-if="cancel" v-on:click="onClose(false)">{{ cancellabel }}</button>
       </div>
     </div>
 
@@ -1948,17 +1975,17 @@ Vue.component("appdialog", {
 
   data: function() {
     return {
-      hidden:          true,
-      unsubscribe:     null, // AppAction listener unsubscriber
-      text:              "", // Text message
-      html:              "", // HTML content
-      dom:             null, // DOM node content
-      ok:              true, // Whether dialog has ok-button
-      cancel:         false, // Whether dialog has cancel-button
-      modal:          false, // Whether dialog is uncloseable without buttons
-      callback:        null, // function(ok) invoked on close
-      oklabel:         "OK",
-      cancellabel: "Cancel",
+      hidden:             true,
+      unsubscribe:        null, // AppAction listener unsubscriber
+      text:                 "", // Text message
+      html:                 "", // HTML content
+      dom:                null, // DOM node content
+      ok:                 true, // Whether dialog has ok-button
+      cancel:            false, // Whether dialog has cancel-button
+      modal:             false, // Whether dialog is uncloseable without buttons
+      callback:           null, // function(ok) invoked on close
+      oklabel:         _("OK"),
+      cancellabel: _("Cancel"),
     };
   },
 
@@ -1997,8 +2024,8 @@ Vue.component("appdialog", {
       self.ok     = (opts && "ok"     in opts) ? opts.ok     : true;
       self.cancel = (opts && "cancel" in opts) ? opts.cancel : false;
       self.modal  = (opts && "modal"  in opts) ? opts.modal :  false;
-      self.oklabel     = opts && Util.isString(opts.ok)     ? opts.ok     : "OK";
-      self.cancellabel = opts && Util.isString(opts.cancel) ? opts.cancel : "Cancel";
+      self.oklabel     = opts && Util.isString(opts.ok)     ? opts.ok     : _("OK");
+      self.cancellabel = opts && Util.isString(opts.cancel) ? opts.cancel : _("Cancel");
       self.callback = opts && opts.onclose;
       self.hidden = false;
       if (!self.text && !self.html) return self.onClose(false);

@@ -193,9 +193,6 @@ msgstr "Käi kaart tagurpidi"
 msgid  "Make {0}"
 msgstr "Tee {0}"
 
-msgid  "wheels"
-msgstr "rattad"
-
 msgid  "Play"
 msgstr "Käi"
 
@@ -435,3 +432,9 @@ msgstr "Nõua uusi kaarte?"
 
 msgid  "redeal"
 msgstr "uued kaardid"
+
+msgid  "template__Thousand__Thousand"
+msgstr "Tuhat"
+
+msgid  "template__Thousand__wheels"
+msgstr "rattad"
