@@ -4,6 +4,8 @@ Deckathlon
 A card game website. Users can register, create a game table or join an existing
 one.
 
+Comes installed with two game templates.
+
 
 
 Installation
@@ -19,8 +21,6 @@ and add at least the following to `etc/deckatlhon.ini`:
     DbOpts.database = "myname"
     DbOpts.username = "myuser"
 
-Comes installed with two game templates.
-
 
 
 Running The Program
@@ -30,7 +30,7 @@ Deckathlon can be run as a stand-alone web server:
 
    python -m deckathlon.index
 
-Or under a WSGI-supporting web server like Apache.
+Or under a WSGI-supporting web server like Apache, see `deckathlon.wsgi`.
 
 
 
@@ -73,7 +73,7 @@ Web server parameters:
     ServerPort    = 9000
     ServerPrefix  = "extra prefix if using reverse proxy"
     ServerBackend = "wsgiref or paste or cherrypy etc if running as stand-alone"
-    SessionPath   = "path to HTTP session files"
+    SessionPath   = "path to login session files"
     Quiet         = True
 
 
@@ -92,9 +92,9 @@ Logging parameters:
 
 Game engine parameters:
 
-  OfflineInterval      = 180
-  OnlineUpdateInterval = 30
-  PollInterval         = 1
+  OfflineInterval      = 180 # Seconds after which player is considered offline
+  OnlineUpdateInterval = 30  # Seconds between updating player online status
+  PollInterval         = 1   # Seconds between data update poll requests
 
 
 
@@ -231,7 +231,7 @@ Each game is described with a configuration template:
                 "S":  80,
                 "C": 100
               },
-              "some other":       points for making some other special move,
+              "some other":       points for making some other special move;
           },
 
           "bonuses": {        bonuses for conditions like bidding blind:
@@ -254,7 +254,7 @@ Each game is described with a configuration template:
           },
 
           "bidonly": {        condition where player can get points from bids only:
-              "min":          minimum score from which player can no longer get points from tricks only;
+              "min":          minimum score from which player can no longer get points from tricks et al;
           }
         },
 
@@ -268,10 +268,10 @@ Source Dependencies
 Deckathlon needs Python 2.7,
 and the following 3rd-party Python packages:
 
-- Bottle (https://bottlepy.org, MIT license)
+- Bottle (https://bottlepy.org,               MIT license)
 - beaker (https://github.com/bbangert/beaker, BSD license)
 - polib  (https://bitbucket.org/izi/polib,    MIT license)
-- pytz   (https://pythonhosted.org/pytz/,      MIT license)
+- pytz   (https://pythonhosted.org/pytz/,     MIT license)
 
 If using Postgres database engine:
 - psycopg2 (https://github.com/psycopg/psycopg2, LGPL)
