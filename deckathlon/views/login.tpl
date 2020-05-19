@@ -12,7 +12,7 @@ Released under the MIT License.
 
 @author      Erki Suurjaak
 @created     18.04.2020
-@modified    15.05.2020
+@modified    19.05.2020
 %"""
 %from deckathlon import conf
 %from deckathlon.lib import util
@@ -22,7 +22,7 @@ Released under the MIT License.
 <head>
   <title>{{_(conf.Title)}} - {{_("Login")}}</title>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <link rel="icon" type="image/png" href="{{WEBROOT}}static/media/favicon.png" />
+  <link rel="icon" type="image/x-icon" href="{{WEBROOT}}static/media/favicon.ico" />
   <link rel="stylesheet" href="{{WEBROOT}}static/site.css" />
   <script src="{{WEBROOT}}static/vendor/vue.min.js"></script>
   <script src="{{WEBROOT}}static/util.js"></script>
