@@ -7,7 +7,7 @@
  *
  * @author    Erki Suurjaak
  * @created   18.04.2020
- * @modified  18.05.2020
+ * @modified  19.05.2020
  */
 
 body {
@@ -201,17 +201,35 @@ button.menu {
   min-width:        unset;
   width:            unset;
 }
-#index #appdialog select {
-  width:            calc(100% - 20pt);
-}
 #appdialog td + td {
   padding-left:     5pt;
 }
 #appdialog div.bottom {
   padding-top:      10pt;
 }
+#appdialog ul {
+  margin:           0;
+}
+#appdialog p:last-child {
+  margin-bottom:    0;
+}
+#index #appdialog select {
+  width:            calc(100% - 20pt);
+}
 #index #appdialog table.private {
   margin-bottom:    5pt;
+}
+
+
+/** About-dialog styling. */
+#appdialog div.about {
+  font-size:        0.8em;
+  text-align:       left;
+  white-space:      normal;
+}
+#appdialog div.about a,
+#appdialog div.about a:visited {
+  color:            blue;
 }
 
 
@@ -1072,7 +1090,7 @@ div.player.me div.name.pulse::after {
   height:           100%;
 }
 #header > div {
-  justify-content:  flex-start;
+  justify-content:  space-between;
 }
 #footer > div > * + * {
   margin-left:     13pt;
@@ -1087,4 +1105,7 @@ div.player.me div.name.pulse::after {
 #header a:hover,
 #footer a:hover {
   text-decoration:  underline;
+}
+#header a:only-child {
+  margin-left:      auto;
 }

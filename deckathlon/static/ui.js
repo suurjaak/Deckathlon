@@ -8,7 +8,7 @@
  *
  * @author    Erki Suurjaak
  * @created   18.04.2020
- * @modified  18.05.2020
+ * @modified  19.05.2020
  */
 
 
@@ -388,24 +388,70 @@ Vue.component("index", {
 
 
 /**
- * Header component, shows index link.
+ * Header component, shows index link and username.
  */
 var TEMPLATE_HEADER = `
 
   <div>
-    <a v-bind:href="Data.db.settings.get('rootURL')">{{ _("Back to index") }}</a>
+    <a v-if="'table' == page" v-bind:href="Data.db.settings.get('rootURL')">{{ _("Back to index") }}</a>
+
+    <a v-if="!Util.isEmpty(user)" v-on:click.prevent="onLogout"
+       v-bind:href="Data.db.settings.get('rootURL') + 'logout'">
+       {{ _("Log out {0}", user.username) }}
+    </a>
+
   </div>
 
 `;
 
 Vue.component("page_header", {
   template: TEMPLATE_HEADER,
+
+  data: function() {
+    var self = this;
+    return {
+      page: self.$options.parent.page || "",
+      user:  null,
+    };
+  },
+
+  mounted: function() {
+    var self = this;
+    self.user = Data.db.user.get();
+    self.unsubscribes = [Data.db.user.listen(self.onData)];
+  },
+
+
+  beforeDestroy: function() {
+    var self = this;
+    self.unsubscribes.forEach(function(f) { f(); });
+  },
+
+
+  methods: {
+
+    onData: function(type) {
+      var self = this;
+      if ("user" == type) self.user = Data.db.user.get();
+    },
+
+    /** Handler for logout, confirms choice. */
+    onLogout: function() {
+      AppActions.dialog(_("Log out?"), {cancel: true, onclose: function(result) {
+        if (!result) return;
+
+        document.location.href = Data.db.settings.get("rootURL") + "logout";
+      }});
+    },
+
+  },
+
 });
 
 
 
 /**
- * Footer component, shows languages and username and logout.
+ * Footer component, shows languages and about.
  *
  * State: {langs, user}
  */
@@ -420,9 +466,8 @@ var TEMPLATE_FOOTER = `
       </a>
     </div>
 
-    <a v-if="!Util.isEmpty(user)" v-on:click.prevent="onLogout"
-       v-bind:href="Data.db.settings.get('rootURL') + 'logout'">
-       {{ _("Log out {0}", user.username) }}
+    <a v-on:click="onAbout">
+       {{ _("about") }}
     </a>
 
   </div>
@@ -465,13 +510,13 @@ Vue.component("page_footer", {
       if ("user" == type) self.user = Data.db.user.get();
     },
 
-    /** Handler for logout, confirms choice. */
-    onLogout: function() {
-      AppActions.dialog(_("Log out?"), {cancel: true, onclose: function(result) {
-        if (!result) return;
-
-        document.location.href = Data.db.settings.get("rootURL") + "logout";
-      }});
+    /** Handler for opening about-box. */
+    onAbout: function() {
+      var settings = Data.db.settings.rw.get();
+      var text = _(settings.about, settings.version, settings.versiondate, settings.author);
+      var dom = Util.createElement("div", {"class": "about"}, markdown(text));
+      Array.from(dom.getElementsByTagName("a")).forEach(function(x) { x.target = "_blank"; });
+      AppActions.dialog(_(settings.title), {dom: dom});
     },
 
   },

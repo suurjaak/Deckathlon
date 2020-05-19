@@ -9,15 +9,36 @@ Released under the MIT License.
 
 @author      Erki Suurjaak
 @created     18.04.2020
-@modified    18.05.2020
+@modified    19.05.2020
 """
 import os
 
 """Program version."""
-Title = "Deckathlon"
-Name = "deckathlon"
-Version = "0.1.dev27"
-VersionDate = "18.05.2019"
+Title       = "Deckathlon"
+Name        = "deckathlon"
+Version     = "0.1.dev28"
+VersionDate = "19.05.2020"
+Author      = "Erki Suurjaak"
+
+"""About-information."""
+About = """Version {0} ({1}).
+
+Released as free open source software under the MIT license.
+
+Built with open source:
+- [Python](https://www.python.org)
+- [bottle](https://bottlepy.org)
+- [beaker](https://github.com/bbangert/beaker)
+- [polib](https://bitbucket.org/izi/polib)
+- [pytz](https://pythonhosted.org/pytz/)
+- [psycopg2](https://github.com/psycopg/psycopg2)
+- [DejaVu Sans](https://github.com/web-fonts/dejavu-sans)
+- [Vue.js](https://github.com/vuejs/vue)
+- [drawdown](https://github.com/adamvleggett/drawdown)
+- [Fugue Icons](https://p.yusukekamiyamane.com)
+
+Copyright 2020 {2}.
+"""
 
 """Application code root path."""
 RootPath = ApplicationPath = os.path.dirname(os.path.abspath(__file__))

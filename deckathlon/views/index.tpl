@@ -13,7 +13,7 @@ Released under the MIT License.
 
 @author      Erki Suurjaak
 @created     18.04.2020
-@modified    18.05.2020
+@modified    19.05.2020
 %"""
 %from deckathlon import conf
 %from deckathlon.lib import util
@@ -34,6 +34,9 @@ Released under the MIT License.
 <body class="index">
 
 
+<div id="header">
+  <page_header ref="header"></page_header>
+</div>
 <div id="main">
   <index ref="root"></index>
 </div>
@@ -53,6 +56,7 @@ Released under the MIT License.
   Data.configure({schema: typeschema, data: typedata, rootURL: (typedata.settings || {}).dataURL});
 
   window.addEventListener("load", function() {
+    vmh = new Vue({el: "#header", data: {page: "index"}});
     vm  = new Vue({el: "#main"});
     vmf = new Vue({el: "#footer", data: {langs: languages}});
 %if get("poll"):

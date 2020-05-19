@@ -1,8 +1,8 @@
 Deckathlon
 ==========
 
-A card game website. Users can register, create a game table or join an existing
-one.
+A card game website. Users can register an account, create their own game table, 
+or join an existing one as player or spectator.
 
 Comes installed with two game templates.
 
@@ -42,7 +42,7 @@ language selection specified in configuration.
 
 Translations can be game template-specific, with identifiers in the form
 `template__TEMPLATENAME__TEXT`. For example, `template__Thousand__Thousand`
-would hold the translated name for template "Thousand".
+would hold the translated name for game template "Thousand".
 
 
 
@@ -283,7 +283,7 @@ Attribution
 ===========
 
 Includes font DejaVu Sans, CC BY-NC-ND 4.0,
-https://github.com/web-fonts/dejavu-sans.
+https://github.com/web-fonts/dejavu-sans, vendored under `static/media/`.
 
 Uses Vue.js 2.6.11 (https://github.com/vuejs/vue, MIT license),
 (c) 2013 Yuxi (Evan) You, vendored under `static/vendor/`.

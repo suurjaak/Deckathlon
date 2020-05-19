@@ -8,7 +8,7 @@ Released under the MIT License.
 
 @author    Erki Suurjaak
 @created   17.04.2020
-@modified  15.05.2020
+@modified  19.05.2020
 ------------------------------------------------------------------------------
 """
 import datetime
@@ -74,8 +74,10 @@ def pagedata(request, page, userid=None, **kwargs):
         root = request.app.get_url("/")
         result["settings"] = dict(rootURL=root, dataURL=root + "api/",
                                   staticURL=root + "static/",
-                                  page=page, 
+                                  page=page,
+                                  about=conf.About,
                                   title=conf.Title,
+                                  author=conf.Author,
                                   version=conf.Version,
                                   versiondate=conf.VersionDate)
 
