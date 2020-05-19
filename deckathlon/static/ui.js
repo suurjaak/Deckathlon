@@ -17,6 +17,16 @@ var AppActions = PubSub.topic([
 ]);
 
 
+/** Returns game-specific translation if available, default otherwise. */
+var templatize = function(template, text, args) {
+    var key = ["template", template.name, text].join("__");
+    var result = _(key);
+    if (result == key) result = _(text);
+    if (args && args.length) result = result.format.apply(result, args);
+    return result;
+};
+
+
 
 /* Make globals like Data available in Vue templates. */
 Vue.use({
@@ -203,6 +213,9 @@ var TEMPLATE_INDEX = `
               <option></option>
               <option v-for="item in templates" v-bind:key="item.id" v-bind:value="item.id">{{ getTemplateName(item.id) }}</option>
             </select>
+
+            <a v-bind:class="table_template && Data.db.templates.rw.get(table_template).description ? '' : 'disabled'" 
+               v-on:click="onShowDescription" v-bind:title="_('Game description')" class="info">i</a>
           </td>
         </tr>
         <tr>
@@ -311,6 +324,18 @@ Vue.component("index", {
         };
         self.searchtimer = null;
       }, 200);
+    },
+
+    /** Handler for showing game template description. */
+    onShowDescription: function() {
+      var self = this;
+      var template = Data.db.templates.rw.get(self.table_template);
+      if (!template) return;
+
+      var text = templatize(template, "description");
+      if (text == "description") text = template.description;
+      var dom = Util.createElement("div", {"class": "text"}, markdown(text));
+      AppActions.dialog(templatize(template, template.name), {dom: dom, onclose: self.onNew});
     },
 
     onOpenTable: function(item) {
@@ -466,6 +491,7 @@ var TEMPLATE_TABLE = `
 
     <h3>
       {{ _("Table: {0} (by {1}, playing {2})", table.name, Util.get(usermap, table.fk_host, "username"), _(template.name)) }}
+      <a v-if="template && template.description" v-on:click="onShowDescription" v-bind:title="_('Game description')" class="info">i</a>
       <button v-if="player && player.fk_user == table.fk_host"
               v-on:click="onOpenTableMenu" v-bind:title="_('Open table settings')" class="menu">&#x2630;</button>
     </h3>
@@ -1110,12 +1136,8 @@ Vue.component("page_table", {
      */
     _: function(text, args) {
       var self = this;
-      var key = self.template ? ["template", self.template.name, text].join("__") : text;
-      var result = _(key);
-      if (result == key && key != text) result = _(text);
       var args = Array.isArray(args) ? args : Array.apply(null, arguments).slice(1);
-      if (args.length) result = result.format.apply(result, args);
-      return result;
+      return self.template ? templatize(self.template, text, args) : _(text, args);
     },
 
 
@@ -1746,6 +1768,18 @@ Vue.component("page_table", {
     },
 
 
+    /** Handler for showing game template description. */
+    onShowDescription: function() {
+      var self = this;
+
+      var key = ["template", self.template.name, "description"].join("__");
+      var text = _(key);
+      if (text == key) text = self.template.description;
+      var dom = Util.createElement("div", {"class": "text"}, markdown(text));
+      AppActions.dialog(self._(self.template.name), {dom: dom});
+    },
+
+
     /** Shows player's trick, last if game underway. */
     onShowPlayerTrick: function(player, index) {
       var self = this;
@@ -1951,14 +1985,14 @@ var TEMPLATE_APPDIALOG = `
     <div class="shadow" v-on:click="!modal && onClose(false)"></div>
     <div class="dialog">
       <div class="content">
-        {{ text }}
+        <div v-if="text" class="text">{{ text }}</div>
+
+        <div v-if="html" v-html="html" class="html"></div>
+
+        <div v-if="dom" ref="dom" class="dom"></div>
+
+        <slot></slot>
       </div>
-
-      <div v-if="html" v-html="html" class="html"></div>
-
-      <div v-if="dom" ref="dom" class="dom"></div>
-
-      <slot></slot>
 
       <div class="buttons">
         <button v-if="ok"     v-on:click="onClose(true)" ref="ok">{{ oklabel }}</button>

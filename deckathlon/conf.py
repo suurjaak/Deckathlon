@@ -16,7 +16,7 @@ import os
 """Program version."""
 Title = "Deckathlon"
 Name = "deckathlon"
-Version = "0.1.dev26"
+Version = "0.1.dev27"
 VersionDate = "18.05.2019"
 
 """Application code root path."""
@@ -142,6 +142,7 @@ DbSchema = {
             "fk_creator":  {"fk": "users"},
             "name":        {},
             "opts":        {},
+            "description": {},
             "dt_created":  {},
             "dt_changed":  {},
         },

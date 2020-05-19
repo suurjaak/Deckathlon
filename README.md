@@ -287,6 +287,8 @@ https://github.com/web-fonts/dejavu-sans.
 
 Uses Vue.js (https://github.com/vuejs/vue, MIT license).
 
+Uses drawdown (https://github.com/adamvleggett/drawdown, MIT license).
+
 Site favicon from Fugue Icons,
 (c) 2010 Yusuke Kamiyamane, https://p.yusukekamiyamane.com.
 

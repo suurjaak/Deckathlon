@@ -108,6 +108,37 @@ body.table div#main > div {
 }
 
 
+/** Information-link styling. */
+a.info {
+  border-radius:    50%;
+  border:           2pt solid white;
+  color:            white;
+  display:          inline-block;
+  font-size:        0.6em;
+  font-family:      serif;
+  font-weight:      bold;
+  margin-right:     5pt;
+  width:            10pt;
+  height:           10pt;
+  position:         relative;
+  top:              -5pt;
+  text-align:       center;
+  text-decoration:  none;
+}
+#appdialog a.info {
+  border-color:     black;
+  color:            black;
+  font-size:        0.7em;
+  margin:           0;
+  position:         unset;
+}
+#appdialog a.info.disabled {
+  border-color:     darkgray;
+  color:            darkgray;
+  cursor:           default;
+  pointer-events:   none;
+}
+
 
 /** Hamburger menu button styling. */
 button.menu {
@@ -145,19 +176,19 @@ button.menu {
   flex-direction:   column;
   justify-content:  space-between;
   max-width:        300pt;
+  max-height:       calc(100% - 100pt);
   opacity:          1;
-  padding:          0 10pt;
+  padding:          10pt;
   text-align:       center;
   z-index:          10001;
 }
 #appdialog div.content {
   max-height:       300pt;
   overflow:         auto;
-  padding:          0 0 10pt 0;
   white-space:      pre-line;
 }
 #appdialog div.buttons {
-  padding:          10pt;
+  padding:          10pt 0 0 0;
   white-space:      nowrap;
 }
 #appdialog input[type=text] {
@@ -170,14 +201,17 @@ button.menu {
   min-width:        unset;
   width:            unset;
 }
-body.index #appdialog select {
-  width:            100%;
+#index #appdialog select {
+  width:            calc(100% - 20pt);
 }
 #appdialog td + td {
   padding-left:     5pt;
 }
 #appdialog div.bottom {
   padding-top:      10pt;
+}
+#index #appdialog table.private {
+  margin-bottom:    5pt;
 }
 
 
@@ -241,9 +275,9 @@ body.index #appdialog select {
   height:           100%;
   position:         relative;
 }
-#table h3 {
+#table > h3 {
   background:       green;
-  width:            fit-content;
+  width:            max-content;
   z-index:          1;
 }
 #table > div.controls {
@@ -253,9 +287,6 @@ body.index #appdialog select {
   width:            100pt;
   display:          flex;
   flex-direction:   column;
-}
-#table a {
-  font-size:        0.8em;
 }
 #table div.table div.controls {
   position:        absolute;
@@ -657,6 +688,14 @@ div.tabletop div.moves div.trick div.stack {
 }
 
 
+/** Game rules popup styling. */
+#appdialog div.dom div.text {
+  font-size:        0.8em;
+  text-align:       left;
+  white-space:      normal;
+}
+
+
 
 /** Spectators styling. */
 div.table div.spectators {
@@ -678,6 +717,7 @@ div.table div.scores {
   font-size:        0.7em;
   max-height:       100pt;
   overflow-y:       auto;
+  overflow-block:   scroll;
   position:         absolute;
   top:              -30pt;
   right:            0;
@@ -766,7 +806,7 @@ div.table div.scores thead tr:first-child th {
 }
 #table div.dialog div.dom,
 #table div.dialog div.html {
-  padding-bottom:   10pt;
+  padding:          10pt 0 0 0;
 }
 #table div.dialog div.dom .discard,
 #table div.dialog div.dom .trick {

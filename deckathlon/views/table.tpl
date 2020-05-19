@@ -25,6 +25,7 @@ Released under the MIT License.
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <link rel="icon" type="image/png" href="{{WEBROOT}}static/media/favicon.png" />
   <link rel="stylesheet" href="{{WEBROOT}}static/site.css" />
+  <script src="{{WEBROOT}}static/vendor/drawdown.js"></script>
   <script src="{{WEBROOT}}static/vendor/vue.min.js"></script>
   <script src="{{WEBROOT}}static/util.js"></script>
   <script src="{{WEBROOT}}static/data.js"></script>
