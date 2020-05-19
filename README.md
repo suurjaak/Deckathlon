@@ -285,9 +285,11 @@ Attribution
 Includes font DejaVu Sans, CC BY-NC-ND 4.0,
 https://github.com/web-fonts/dejavu-sans.
 
-Uses Vue.js (https://github.com/vuejs/vue, MIT license).
+Uses Vue.js 2.6.11 (https://github.com/vuejs/vue, MIT license),
+(c) 2013 Yuxi (Evan) You, vendored under `static/vendor/`.
 
-Uses drawdown (https://github.com/adamvleggett/drawdown, MIT license).
+Uses drawdown (https://github.com/adamvleggett/drawdown, MIT license),
+(c) 2016 Adam Leggett, vendored under `static/vendor/`.
 
 Site favicon from Fugue Icons,
 (c) 2010 Yusuke Kamiyamane, https://p.yusukekamiyamane.com.
