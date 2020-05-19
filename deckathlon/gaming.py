@@ -8,7 +8,7 @@ Released under the MIT License.
 
 @author    Erki Suurjaak
 @created   19.04.2020
-@modified  18.05.2020
+@modified  19.05.2020
 ------------------------------------------------------------------------------
 """
 import collections
@@ -274,7 +274,7 @@ class Table(object):
                 template=True, game=True, players=True, users=True
             )
 
-            dt_from = dt_from or pytz.utc.localize(datetime.datetime.min)
+            dt_from0, dt_from = dt_from, (dt_from or pytz.utc.localize(datetime.datetime.min))
             where = {"dt_changed": (">", dt_from), "fk_table": table["id"],
                      "fk_user": ("IN", set(util.unwrap(users, "id")) - set([self._userid]))}
             online = self._tx.fetchall("online", where=where)
@@ -297,7 +297,7 @@ class Table(object):
                           online=online, table_users=table_users, templates=[template],
                           requests=requests)
             result = {k: v for k, v in result.items() if any(v)}
-            for datatype in "players", "table_users":
+            for datatype in ("players", "table_users") if dt_from0 else ():
                 dels = self._tx.fetchall(datatype, "id", dt_deleted=("!=", None),
                                          dt_changed=(">", dt_from))
                 if dels: result.setdefault("__deleted__", {})[datatype] = util.unwrap(dels, "id")
