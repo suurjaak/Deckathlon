@@ -50,7 +50,7 @@ var TEMPLATE_LOGIN = `
 
     <h1>{{ Data.db.settings.get("title") }}</h1>
 
-    <span v-if="msg" v-bind:class="'msg ' + msgclass + (ongoing ? ' loading' : '')">
+    <span v-if="msg" class="msg" v-bind:class="msgclass + (ongoing ? ' loading' : '')">
       {{ msg }}<br />
     </span>
 
@@ -543,7 +543,7 @@ var TEMPLATE_TABLE = `
 
     <div class="table">
 
-      <div v-bind:class="'tabletop ' + table.status"
+      <div class="tabletop" v-bind:class="table.status"
            v-on:dragover="game && 'distributing' != game.status ? onDragCardTo(null, $event) : null"
            v-on:drop    ="game && 'distributing' != game.status ? onDropCard(null, $event) : null">
 
