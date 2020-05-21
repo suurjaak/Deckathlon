@@ -8,7 +8,7 @@
  *
  * @author    Erki Suurjaak
  * @created   18.04.2020
- * @modified  19.05.2020
+ * @modified  21.05.2020
  */
 
 
@@ -617,6 +617,7 @@ var TEMPLATE_TABLE = `
           <div id="trick" v-bind:class="getClass('trick')">
 
             <div v-for="(playerx, i) in otherplayers.concat(player).filter(Boolean)"
+                 v-if="!player || playerx.id != player.id || !isTurn(player)"
                  v-bind:class="getClass('player', i)">
               <template v-for="move in [getLastMove(playerx)]" v-if="move">
                 <div class="cards">
@@ -636,14 +637,43 @@ var TEMPLATE_TABLE = `
 
           </div>
 
-          <div class="cards">
+          <div v-if="isTurn(player) && !player.expected.follow" class="cards">
             <div v-for="card in move.cards"
                  v-bind:draggable="player"
-                 v-on:dragstart  ="player && onDragCardStart(null, card, $event)" 
-                 v-on:dblclick   ="player && onMoveCard(null, player.id, card)"
+                 v-on:dragstart  ="player && onDragCardStart('cards', card, $event)" 
+                 v-on:dblclick   ="player && onMoveCard('cards', player.id, card)"
                  v-html="Cardery.tag(card)"
                  class="card"></div>
           </div>
+
+          <div v-else-if="isTurn(player) && player.expected.follow" class="cards response">
+            <div v-for="i in Util.range(player.expected.cards)"
+                 v-bind:draggable="move.cards && move.cards[i]"
+                 v-on:dragstart  ="onDragCardStart('cards', move.cards && move.cards[i], $event)" 
+                 v-on:drop       ="onDropCard('cards', $event)"
+                 v-on:dragover   ="onDragCardTo('cards', $event)"
+                 v-on:dblclick   ="onMoveCard('cards', player.id, move.cards && move.cards[i])"
+                 class="card drop">
+              <div v-html="Cardery.tag(move.cards && move.cards[i])"></div>
+              <div v-if="Util.isEmpty(move.cards)" class="hint">{{ _("respond") }}</div>
+            </div>
+          </div>
+
+
+          <div v-if="isTurn(player) && player.expected.follow" class="cards follow">
+            <div v-for="i in Util.range(player.expected.follow)"
+                 v-bind:draggable="move.follow && move.follow[i]"
+                 v-on:dragstart  ="onDragCardStart('follow', move.follow && move.follow[i], $event)" 
+                 v-on:drop       ="onDropCard('follow', $event)"
+                 v-on:dragover   ="onDragCardTo('follow', $event)"
+                 v-on:dblclick   ="onMoveCard('follow', player.id, move.follow && move.follow[i])"
+                 class="card drop">
+              <div v-html="Cardery.tag(move.follow && move.follow[i])"></div>
+              <div v-if="Util.isEmpty(move.follow)" class="hint">{{ _("follow") }}</div>
+            </div>
+          </div>
+
+
 
           <div v-if="isTurn(player)" class="controls">
             <label v-if="crawlable" class="crawl" v-bind:title="_('Make facedown move')">
@@ -656,6 +686,7 @@ var TEMPLATE_TABLE = `
               {{ _(special.capitalize()) }}
             </label>
             <button v-bind:disabled="!playable" v-on:click="onMove(true, $event)">{{ _("Play") }}</button>
+            <button v-if="retreatable" v-on:click="onRetreat">{{ _("Retreat") }}</button>
             <button v-if="passable" v-on:click="onMove(false, $event)">{{ _("Pass") }}</button>
           </div>
 
@@ -664,14 +695,22 @@ var TEMPLATE_TABLE = `
 
         <div v-if="game" class="extra">
 
-          <div v-if="!Util.isEmpty(getData('talon'))" class="talon">
-            <div class="cards">
-              <div v-for="card in getData('talon')" v-html="Cardery.tag(card)" class="card"></div>
+          <div v-for="talon in [getData('talon')]" class="talon">
+            <div v-if="Util.get(template, 'opts', 'bidding', 'talon')" class="cards">
+              <div v-for="card in talon" v-html="Cardery.tag(card)" class="card"></div>
             </div>
+            <template v-else-if="!Util.isEmpty(talon) && 'ended' != game.status">
+              <div v-if="Util.get(template, 'opts', 'talon', 'trump')" v-html="Cardery.tag(talon.shift())" class="trump card"></div>
+
+              <div v-if="!Util.isEmpty(talon)" v-bind:title="talon.length" class="stack">
+                <div v-html="Cardery.tag(' ')" class="card"></div>
+                <div class="count">{{ talon.length }}</div>
+              </div>
+            </template>
           </div>
 
           <div v-if="!Util.isEmpty(game.opts)" class="opts">
-            <div v-if="game.opts.trump" class="trump">
+            <div v-if="game.opts.trump && !Util.get(template, 'opts', 'talon', 'trump')" class="trump">
               {{ _("Trump") }}
               <div v-bind:class="Cardery.name(game.opts.trump)"
                    v-html="Cardery.tag(game.opts.trump)"></div>
@@ -903,7 +942,7 @@ Vue.component("page_table", {
       user:         null, // User account
       hand:         [],   // Current hand, with temporary local changes
       move:         {},   // Current move (or bid) being made
-      drag:         {},   // Current dragging as {playerid, card}
+      drag:         {},   // Current dragging as {source, card}
       menu:         {},   // Table settings-menu current state
       flags:        {},   // Various temporary flags like "highlightnew"
       unsubscribe:  [],   // Data listener unsubscribers
@@ -1037,7 +1076,7 @@ Vue.component("page_table", {
       var self = this;
       return self.game && ("bidding" == self.game.status || 
         !Util.isEmpty(self.game.bid) && "ended" != self.game.status 
-        && Util.isEmpty(self.game.trick) && Util.isEmpty(self.game.tricks)
+        && !self.game.trick.some(function(x) { return x.fk_player; }) && Util.isEmpty(self.game.tricks)
       );
     },
 
@@ -1082,9 +1121,22 @@ Vue.component("page_table", {
     playable: function() {
       var self = this;
       var result = false;
-      if (self.player && Util.isNumeric(self.player.expected.cards)
-      && (self.move.cards || []).length == self.player.expected.cards) result = true;
-      else result = Object.keys(self.move).length;
+      if (self.player && Util.isNumeric(self.player.expected.cards)) {
+        if ((self.move.cards || []).length == self.player.expected.cards) result = true;
+      } else result = Object.keys(self.move).length;
+      if (result && Util.get(self.template, "opts", "move", "follow")) {
+        result = !self.hand.length || !Util.isEmpty(self.move.follow);
+      };
+      return result;
+    },
+
+
+    /** Returns whether current game move is retreatable. */
+    retreatable: function() {
+      var self = this;
+      var result = false;
+      if ("ongoing" == self.game.status)
+        result = Util.get(self.template, "opts", "move", "retreat");
       return result;
     },
 
@@ -1270,7 +1322,7 @@ Vue.component("page_table", {
         result = ("ended" == self.game.status) ? self.game.talon0 : self.game.talon;
       } else if ("hand" == name && self.game) {
         if ("ended" == self.game.status && Util.get(self.template, "opts", "reveal")) {
-          result = a.hand0;
+          result = self.game.hands[self.player.id];
         } else if (self.player && a.id == self.player.id) result = self.hand;
         else result = a.hand;
       } else if ("scores" == name && self.table) {
@@ -1281,7 +1333,7 @@ Vue.component("page_table", {
         result = self.table.bids_history;
         if (!Util.isEmpty(self.table.bids)) result = result.concat([self.table.bids]);
       };
-      return result;
+      return Util.clone(result);
     },
 
 
@@ -1290,7 +1342,7 @@ Vue.component("page_table", {
       var self = this;
       var result = name;
       if ("trick" == name) {
-        if (Util.isEmpty(self.game.trick)) result += " over";
+        if (!self.game.trick.some(function(x) { return x.fk_player; })) result += " over";
         if (Util.get(self.template, 'opts', 'stack')) result += " stack";
       } else if ("player" == name) {
          result += " pos{0}of{1}".format(a + 1, self.players.length);
@@ -1316,10 +1368,12 @@ Vue.component("page_table", {
       var self = this;
       var result = null;
       var moves = [];
-      if (Util.isEmpty(self.game.trick)) {
+      if (!self.game.trick.some(function(x) { return x.fk_player; })) {
         if (Util.isEmpty(self.move)) moves = self.game.tricks[self.game.tricks.length - 1];
       } else moves = self.game.trick;
-      (moves || []).slice().reverse().some(function(move) {
+      if (!player && self.template.opts.stack && Util.get(self.game, "trick", 0, "stack")) {
+        result = {"cards": Util.get(self.game, "trick", 0, "stack", -1)};
+      } else (moves || []).slice().reverse().some(function(move) {
         if ((!player || move.fk_player == player.id)
         && (nopass == null || move.pass != Boolean(nopass))) return result = move;
       });
@@ -1381,7 +1435,7 @@ Vue.component("page_table", {
       if ("games" == type || "tables" == type) {
         if ((Util.isEmpty(self.game0) && !Util.isEmpty(self.game)
              || !Util.isEmpty(self.game0) && self.game0.id != self.game.id)
-        && Util.isEmpty(self.game.trick) && Util.isEmpty(self.game.bids)
+        && !self.game.trick.some(function(x) { return x.fk_player; }) && Util.isEmpty(self.game.bids)
         && JSON.stringify(self.player.hand) == JSON.stringify(self.player.hand0)) sound = "deal";
       };
 
@@ -1415,10 +1469,13 @@ Vue.component("page_table", {
 
 
       if ("games" == type || "players" == type) {
-         if ("ended" != self.game.status && Util.isEmpty(self.game.tricks)
-         && Util.isEmpty(self.game.trick) && Util.isEmpty(self.move)
-         && (Util.get(self.game, "bid", "fk_player") != self.player.id
-             || "ongoing" != self.game.status)) self.onHighlightNew();
+         if (self.game && "ended" != self.game.status 
+         && (Util.get(self.template, "opts", "refill") && (Util.get(self.game.trick, -1) || {}).fk_player == self.player.id
+             || !Util.get(self.template, "opts", "refill")
+             && Util.isEmpty(self.game.tricks)
+             && !self.game.trick.some(function(x) { return x.fk_player; }) && Util.isEmpty(self.move)
+             && (Util.get(self.game, "bid", "fk_player") != self.player.id
+             || "ongoing" != self.game.status))) self.onHighlightNew();
       };
 
       var file = self.$options.sounds[sound];
@@ -1574,81 +1631,80 @@ Vue.component("page_table", {
 
 
     /** Handler for starting to drag card, remembers card and source. */
-    onDragCardStart: function(playerid, card, evt) {
+    onDragCardStart: function(source, card, evt) {
       var self = this;
-      self.drag = {playerid: playerid, card: card};
+      self.drag = {source: source, card: card};
     },
 
 
     /** Handler for dragging a card over a container, allows droppability. */
-    onDragCardTo: function(playerid, evt) {
+    onDragCardTo: function(target, evt) {
       var self = this;
-      var playerid0 = self.drag.playerid;
-      if (playerid != playerid0) evt.preventDefault();
+      if (target != self.drag.source) evt.preventDefault();
     },
 
 
     /** Handler for dropping a dragged card. */
-    onDropCard: function(playerid, evt) {
+    onDropCard: function(target, evt) {
       var self = this;
 
-      var playerid0 = self.drag.playerid;
+      var source = self.drag.source;
       var card = self.drag.card;
       self.drag = {};
-      self.onMoveCard(playerid0, playerid, card);
+      self.onMoveCard(source, target, card, true);
     },
 
 
     /** Handler for moving a card from source to target. */
-    onMoveCard: function(source, target, card) {
+    onMoveCard: function(source, target, card, swap) {
       var self = this;
       if (!card || ["distributing", "ongoing"].indexOf(self.game.status) < 0) return;
       if (!self.isTurn(self.player) && (!Util.get(self.template, "opts", "trick") || !self.game.trick.length || self.game.trick.some(function(x) {
         return x.fk_player == self.player.id;
       }))) return;
 
-      // From hand to table or distribution
       if (source == self.player.id) {
-        if (self.game.status == "distributing") {
-          if (!target) {
-            // Find distribution target with room
-            self.otherplayers.some(function(player) {
-              var count = self.player.expected.distribute[player.id];
-              if (count > (Util.get(self.move, player.id) || []).length) return target = player.id;
-            });
-            if (!target) return;
+        // From hand to table or distribution
 
-          };
-          
-          if (Util.isNumeric(self.player.expected.distribute[target])
-          && (self.move[target] || []).length == self.player.expected.distribute[target]) return;
-        } else {
-          if (Util.isNumeric(self.player.expected.cards)
-          && (self.move.cards || []).length >= self.player.expected.cards) return;
-        };
-        target = target || "cards";
-        var dropped = false;
-        self.hand = self.hand.filter(function(x) {
-          // Take care to not drop all jokers as they're not unique.
-          if (dropped) return true;
-          dropped = (x == card);
-          return !dropped;
+        var expected = self.player.expected;
+        if ("distributing" == self.game.status) expected = self.player.expected.distribute;
+
+        if (!target && expected.cards
+        && (!Util.isNumeric(expected.cards) || (self.move.cards || []).length < expected.cards))
+          target = "cards";
+
+        if (!target) Object.keys(expected).some(function(k) {
+          // Find target with room, or just any target
+          if (!Util.isNumeric(expected[k])) return;
+          target = k;
+          if ((self.move[k] || []).length < expected[k]) return true;
         });
+
+        if (!target || !swap && Util.isNumeric(expected[target]) 
+        && (self.move[target] || []).length >= expected[target]) return;
+
+        self.hand = self.hand.filter(function(x) { return x != card; });
         var move = self.move[target] || [];
+        if (move.length >= expected[target])
+          self.hand = Util.intersectUnique(self.player.hand, self.hand.concat(move.pop()));
         move.push(card);
         Vue.set(self.move, target, move);
         self.move.__touched = true;
 
-      // From table or distribution to hand
       } else if (target == self.player.id) {
+        // From table or distribution to hand
+
         source = source || "cards";
         self.hand = Util.intersectUnique(self.player.hand, self.hand.concat(card));
         var move = self.move[source].filter(function(x) { return x != card; });
         if (Util.isEmpty(move)) Vue.delete(self.move, source);
         else Vue.set(self.move, source, move);
 
-      // From one distribution to another
       } else {
+        // From one distribution to another
+
+        source = source || "cards";
+        target = target || "cards";
         var move1 = self.move[source].filter(function(x) { return x != card; });
         var move2 = self.move[target] || [];
 
@@ -1925,7 +1981,7 @@ Vue.component("page_table", {
       evt.target.disabled = true;
       Data.query({url: "actions", data: data}).success(function() {
         Vue.set(self.game, "fk_player", null); // Get immediate UI update
-        if (Util.isEmpty(self.game.trick))     // Avoid previous trick flicker
+        if (!self.game.trick.some(function(x) { return x.fk_player; })) // Avoid previous trick flicker
           Vue.set(self.game, "tricks", self.game.tricks.concat([[Util.merge(move, {"fk_player": self.player.id})]]));
         self.move = {};
       }).error(function(err, req) {
@@ -1934,6 +1990,32 @@ Vue.component("page_table", {
       }).complete(function() {
         evt.target.disabled = false;
       });
+    },
+
+
+    /** Carries out game action: make a retreat. */
+    onRetreat: function(evt) {
+      var self = this;
+      evt.target.disabled = true;
+
+      var move = {retreat: true};
+      var data = {action: "retreat", fk_table: self.table.id, data: move};
+
+      AppActions.dialog(self._("Retreat and take penalty?"), {cancel: true, onclose: function(result) {
+        if (!result) return evt.target.disabled = false;
+
+        Data.query({url: "actions", data: data}).success(function() {
+          Vue.set(self.game, "fk_player", null); // Get immediate UI update
+          if (self.game.trick.some(function(x) { return x.fk_player; })) // Avoid previous trick flicker
+            Vue.set(self.game, "tricks", self.game.tricks.concat([[Util.merge(move, {"fk_player": self.player.id})]]));
+          self.move = {};
+        }).error(function(err, req) {
+          console.log("Error making retreat.", err, req);
+          AppActions.dialog(self._(err));
+        }).complete(function() {
+          evt.target.disabled = false;
+        });
+      }});
     },
 
 

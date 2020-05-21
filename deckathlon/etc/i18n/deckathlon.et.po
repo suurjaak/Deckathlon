@@ -1,3 +1,13 @@
+# Translation file for Estonian.
+#
+# ------------------------------------------------------------------------------
+# This file is part of Deckathlon - card game website.
+# Released under the MIT License.
+#
+# @author    Erki Suurjaak
+# @created   08.05.2020
+# @modified  21.05.2020
+
 msgid  "Username"
 msgstr "Kasutajanimi"
 
@@ -436,6 +446,27 @@ msgstr "uued kaardid"
 msgid  "Game description"
 msgstr "Mängu kirjeldus"
 
+msgid  "Must follow"
+msgstr "Peab käima järgmise kaardi"
+
+msgid  "No need to follow"
+msgstr "Ei pea käima järgmist kaarti"
+
+msgid  "respond"
+msgstr "alla"
+
+msgid  "follow"
+msgstr "peale"
+
+msgid  "Retreat"
+msgstr "Võta üles"
+
+msgid  "Retreat and take penalty?"
+msgstr "Võta kaardid üles?"
+
+msgid  "retreat"
+msgstr "võttis üles"
+
 msgid  "about"
 msgstr "info"
 
@@ -478,6 +509,9 @@ msgstr ""
 
 msgid  "template__Thousand__Thousand"
 msgstr "Tuhat"
+
+msgid  "template__Five Sheets__Five Sheets"
+msgstr "Viis lehte"
 
 msgid  "template__Thousand__wheels"
 msgstr "rattad"
@@ -682,7 +716,7 @@ msgstr ""
 "\n"
 "Vahetamise tõttu kipub pingerea ladvik võitma ka järgmistes mängudes, sest nad "
 "mitte ainult ei saa oma nõrkasid kaarte ära anda, nad saavad ka keskenduda üksikute "
-"kaartide äraandmisele - ja lisaks nad saavad veel häid kaarte vastu. Tihtipeale "
+"kaartide äraandmisele - ja lisaks nad saavad veel tugevaid kaarte vastu. Tihtipeale "
 "mängu alguses sõdivad esimene-teine koht omavahel kuni kaartidest lahti saavad, "
 "kuna kaotanud mängijatel lihtsalt pole nii kõrgeid kaarte ja nii palju mitmikuid käia.\n"
 "\n"
@@ -690,3 +724,35 @@ msgstr ""
 "ja sõltuvalt mängijate arvust jagub talle enamasti kaarte ühe võrra vähem.\n"
 "\n"
 "Kes täpselt on siin mängus Arschloch - esimene või viimane koht - on vaieldav."
+
+msgid  "template__Five Sheets__description"
+msgstr ""
+"Lihtne mäng 2-8 mängijale, kus mängijad peavad tapma eelmise kaardi ja käima "
+"kaardi järgmisele mängijale tapmiseks. Mängitakse pakiga, kus on 52 kaarti, "
+"kahed kuni ässad. Eesmärgiks on oma kaartidest kõige varem vabaneda; "
+"esimesena kaartidest lahtisaanu on võitja ja viimasena lahtisaanu on kaotaja.\n"
+"\n"
+"\n"
+"### Mängimine\n"
+"\n"
+"Igale mängijale jagatakse 5 kaarti, ülejäänud pakk läheb laua keskele, pilt "
+"allapoole, üks kaart pannakse paki alla trumbiks, pilt ülespoole, "
+"ja üks kaart käiakse välja laua keskele virna alguskaardina.\n"
+"\n"
+"Jagajast järgmine alustab, käies ühe kaardi mis tapab laua viimase kaardi, "
+"ja veel ühe kaardi järgmisele mängijale tapmiseks. Kaardi tapmiseks tuleb käia "
+"tugevam kaart samas mastis, või trumpkaart. Trumpi saab mängida ka siis kui "
+"mängijal on käia samas mastis tugevamat.\n"
+"\n"
+"Pärast käimist võtab mängija oma kaardid laua pakist jälle täis, et neil oleks "
+"5 kaarti käes. Paki all olev trumpkaart võetakse viimasena.\n"
+"\n"
+"Kui mängija ei suuda või ei soovi laua viimast kaarti tappa, peab ta laua "
+"virnast kuni 5 kaarti üles võtma. Kui laua virn tühjaks saab, käiakse pakist "
+"üks kaart välja virna. Kui nii laua virn kui pakk tühjaks saavad, peab järgmine "
+"mängija käima ainult ühe kaardi.\n"
+"\n"
+"Kui mängijal on ainult üks kaart käes, ei pea nad teist kaarti käima.\n"
+"\n"
+"Kaartide tugevus on: äss tugevaim, kuningas, emand, poiss, kümme, .., kolm, "
+"kaks nõrgeim."

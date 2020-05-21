@@ -2,13 +2,79 @@
 """
 Gaming engine.
 
+
+Structure for games-row:
+------------------------
+
+- games.series: number
+  Game series index, 0 for first.
+
+- games.sequence: number
+  Game index in series, 0 for first.
+
+- games.status: string
+  Current game phase,
+  one of "new", "bidding", "distributing", "ongoing", "ended".
+
+- games.opts: {}
+  Various game flags. {"trump": card or suite} if game has trump.
+  {"sell": True} if a player is currently selling something.
+
+- games.deck: []
+  Initial game deck, shuffled.
+
+- games.hands: {}
+  Initial player hands, as {player ID: [..cards in hand..]}.
+
+- games.talon: []
+  Current game talon, as [..cards in talon..].
+
+- games.talon0: []
+  Initial game talon, as [..cards in talon..].
+
+- games.bid: {}
+  Game bid, as {"fk_player": player ID, ?"number": amount bid,
+                ?"suite": suite bid}.
+
+- games.bids: []
+  All game bids, as [{"fk_player": player ID, ?"number": amount bid,
+                      ?"suite": suite bid, ?"pass": True}].
+
+- games.trick: []
+  Contains current cards on table, with each move as dict in list,
+  {"fk_player": player ID, "cards": [..list of cards played..]},
+  or {"fk_player": player ID, "pass": True} if player passed.
+  Special moves and conditions are additional boolean flags,
+  e.g. "trump": True if played made a trump, "crawl": True if played made
+  a crawl move, etc. Gets emptied if game round ends with a cleared table.
+  If game has stack, games.trick[0] is {"stack": [[..cards played..], ..]}.
+
+- games.tricks: []
+  Contains all previous tricks, each list item being the previous games.trick.
+
+- games.moves: []
+  All moves in game, as a list of lists, with a sublist for each trick.
+  Mostly mirrors game.tricks, but not all moves are represented in trick,
+  e.g. distributing cards as
+  {"fk_player": player ID, "distribute": {player ID: [..cards given..], }}.
+
+- games.discards: []
+  List of cards discarded in game if game has discard pile,
+  as [[..cards discarded..], ].
+
+- games.score: {}
+  Player scores on finishing game if game has scoring,
+  as {player ID: score, ..}. Score is points if game has point scoring,
+  or rank index if player has rank scoring (e.g. winner is index 0).
+
+
 ------------------------------------------------------------------------------
 This file is part of Deckathlon - card game website.
 Released under the MIT License.
 
 @author    Erki Suurjaak
 @created   19.04.2020
-@modified  19.05.2020
+@modified  21.05.2020
 ------------------------------------------------------------------------------
 """
 import collections
@@ -484,7 +550,8 @@ class Table(object):
 
         HANDLERS = {"start": self.start, "end":    self.end,    "look": self.look,
                     "bid":   self.bid,   "move":   self.move,   "distribute": self.distribute,
-                    "sell":  self.sell,  "redeal": self.redeal, "reset": self.reset}
+                    "sell":  self.sell,  "redeal": self.redeal, "reset": self.reset,
+                    "retreat": self.retreat, }
 
         if data["action"] not in HANDLERS:
             error, status = "Unknown action", httplib.BAD_REQUEST
@@ -548,6 +615,10 @@ class Table(object):
                     "status": gamestatus, "fk_table": table["id"],
                     "hands": {k: v for k, v in dist.items() if k != "talon"}}
             if "talon" in dist: game["talon"] = game["talon0"] = dist["talon"]
+            if "trump" in dist: game["opts"]  = {"trump": suite(dist["trump"])}
+            if "lead"  in dist: game["trick"] = [{"stack": [dist["lead"]]}]
+            elif util.get(template, "opts", "stack"): game["trick"] = [{"stack": []}]
+                
 
             expecteds = {} # {fk_player: {..}}
 
@@ -1001,10 +1072,11 @@ class Table(object):
                                           ("pass", "crawl", "trump"))
             do_special = next((x for x in util.get(template, "opts", "move", "special") or {}
                                if x != "trump" and data["data"].get(x)), None)
+            do_follow = data["data"].get("follow") if util.get(template, "opts", "move", "follow") else None
 
-            if do_pass and not game["trick"]:
+            if do_pass and not util.get(template, "opts", "move", "pass"):
                 error, status = "Cannot pass", httplib.BAD_REQUEST
-            elif do_pass and not util.get(template, "opts", "move", "pass"):
+            elif do_pass and not game["trick"]:
                 error, status = "Cannot pass", httplib.BAD_REQUEST
             elif do_crawl and util.get(template, "opts", "move", "crawl") is None:
                 error, status = "Cannot crawl", httplib.BAD_REQUEST
@@ -1012,7 +1084,7 @@ class Table(object):
                 error, status = "Not the right amount of cards", httplib.BAD_REQUEST
             elif len(drop(player["hand"], cards)) > len(player["hand"]) - len(cards):
                 error, status = "No such cards", httplib.BAD_REQUEST
-            elif not has_move_right_amount(template, player, cards):
+            elif not has_move_expected_amount(template, cards):
                 error, status = "Not the right amount of cards", httplib.FORBIDDEN
             elif do_crawl and isinstance(util.get(template, "opts", "move", "crawl"), (int, long)) \
             and util.get(template, "opts", "move", "crawl") != len(game["tricks"]):
@@ -1020,7 +1092,7 @@ class Table(object):
             elif do_crawl and set(map(level, template["opts"]["cards"][-4])) & set(map(level, player["hand"])):
                 error, status = "Cannot crawl if you have a top card", httplib.FORBIDDEN
 
-            elif do_trump and not util.get(template, "opts", "trump"):
+            elif do_trump and not util.get(template, "opts", "move", "special", "trump"):
                 error, status = "Cannot make trump in game", httplib.FORBIDDEN
             elif do_trump and util.get(template, "opts", "move", "special", "trump", len(game["tricks"])) == False:
                 error, status = "Cannot make trump this round", httplib.FORBIDDEN
@@ -1062,19 +1134,28 @@ class Table(object):
                 error, status = "Must play cards of one suite", httplib.BAD_REQUEST
             elif cards and util.get(template, "opts", "move", "level") and len(set(map(level, cards))) != 1:
                 error, status = "Must play cards of one level", httplib.BAD_REQUEST
-            elif cards and game["trick"] and util.get(template, "opts", "move", "response", "suite") \
-            and not any(x.get("crawl") for x in game["trick"]) \
-            and set(map(suite, cards)) != set(map(suite, game["trick"][0]["cards"])) \
-            and set(map(suite, game["trick"][0]["cards"])) & set(map(suite, player["hand"])):
+            elif not do_pass and not has_move_right_suite(template, game, player, cards):
                 error, status = "Must follow suite", httplib.BAD_REQUEST
-
-            elif cards and game["trick"] and util.get(template, "opts", "move", "response", "level") \
-            and cmp_cards(template, cards[0], last_cards(game["trick"])[0]) < 0:
+            elif not do_pass and not has_move_right_level(template, game, cards):
                 error, status = "Must play at least same level", httplib.BAD_REQUEST
-
-            elif cards and game["trick"] and util.get(template, "opts", "move", "response", "amount") \
-            and len(cards) < len(last_cards(game["trick"])):
+            elif not do_pass and not has_move_right_amount(template, game, cards):
                 error, status = "Must play at least same amount", httplib.BAD_REQUEST
+
+        if not error:
+
+            if util.get(template, "opts", "move", "follow") \
+            and not do_follow and len(player["hand"]) - len(cards):
+                error, status = "Must follow", httplib.BAD_REQUEST
+            elif util.get(template, "opts", "move", "follow") \
+            and do_follow is not None and not isinstance(do_follow, list):
+                error, status = "Unknown action", httplib.BAD_REQUEST
+            elif util.get(template, "opts", "move", "follow") \
+            and do_follow is not None \
+            and not set(drop(player["hand"], cards)) & set(do_follow):
+                error, status = "No such cards", httplib.BAD_REQUEST
+            elif util.get(template, "opts", "move", "follow") \
+            and do_follow and not last_cards(template, game):
+                error, status = "No need to follow", httplib.BAD_REQUEST
 
         if not error:
             do_crawl = do_crawl or any(x.get("crawl") for x in game["trick"])
@@ -1092,18 +1173,36 @@ class Table(object):
                 move["crawl"] = True
             if do_pass:
                 move["pass"] = True
+            if do_follow:
+                move["follow"] = do_follow
+                pchanges["hand"] = drop(pchanges["hand"], do_follow)
             gmove = dict(move, fk_player=player["id"])
 
             pchanges["moves"] = copy.deepcopy(player["moves"])
-            if not any(x["fk_player"] == player["id"] for x in game["trick"]):
+            if not pchanges["moves"] or util.get(template, "opts", "move", "win") \
+            and not any(x.get("fk_player") == player["id"] for x in game["trick"]):
                 pchanges["moves"].append([])
             pchanges["moves"][-1].append(move)
 
-            gchanges["moves"]    = copy.deepcopy(game["moves"])
-            gchanges["trick"]    = copy.deepcopy(game["trick"])
-            if not game["trick"]:    gchanges["moves"].append([])
+            gchanges["moves"] = copy.deepcopy(game["moves"])
+            gchanges["trick"] = copy.deepcopy(game["trick"])
+            if not gchanges["moves"] \
+            or util.get(template, "opts", "move", "win") and not game["trick"]:
+                gchanges["moves"].append([])
             gchanges["moves"][-1].append(gmove)
             gchanges["trick"].append(gmove)
+
+            if util.get(game, "trick", 0, "stack") is not None:
+                gchanges["trick"][0]["stack"].append(cards[:])
+                if do_follow: gchanges["trick"][0]["stack"][-1].extend(do_follow)
+
+            if util.get(template, "opts", "refill") and game["talon"] \
+            and not util.get(template, "opts", "move", "win") \
+            and len(pchanges["hand"]) < util.get(template, "opts", "hand", default=0):
+                refill = game["talon"][-(util.get(template, "opts", "hand") - len(pchanges["hand"])):]
+                gchanges["talon"] = game["talon"][:-len(refill)]
+                pchanges["hand0"] = pchanges["hand"]
+                pchanges["hand"] = sort(template, pchanges["hand"] + refill)
 
             player.update(pchanges)
             playerids_ingame = set(x["id"] for x in players if x["hand"])
@@ -1150,8 +1249,10 @@ class Table(object):
                         gchanges["fk_player"] = player2["id"]
             else:
                 player2 = next_player_in_round(template, dict(game, **gchanges), players, player)
-                gchanges["fk_player"] = player2["id"]
-                pchanges2["expected"] = get_expected_move(template, dict(game, **gchanges), players, player2)
+                if player2:
+                    gchanges["fk_player"] = player2["id"]
+                    pchanges2["expected"] = get_expected_move(template, dict(game, **gchanges), players, player2)
+                else: game_over = True
 
             self._tx.update("games",   gchanges, id=game["id"])
             self._tx.update("players", pchanges, id=player["id"])
@@ -1163,7 +1264,7 @@ class Table(object):
             )
 
             if game_over:
-                gchanges = {"status": "ended", "fk_player": table["fk_host"]}
+                gchanges = {"status": "ended"}
                 tchanges = {"status": "ended"}
                 if game["bid"]:
                     tchanges["bids"] = table["bids"] + [game["bid"]]
@@ -1181,6 +1282,90 @@ class Table(object):
                 self._tx.update("tables",  tchanges, id=table["id"])
                 for p in players:
                     self._tx.update("players", {"dt_changed": util.utcnow()}, id=p["id"])
+
+        return error, status
+
+
+    def retreat(self, data=None):
+        """Carries out game retreat action."""
+        error, status = None, httplib.OK
+
+        table, template, game, players, player = self.populate(
+            template=True, game=True, players=True, player=True
+        )
+
+        if "ongoing" != game["status"]:
+            error, status = "Game not underway", httplib.CONFLICT
+        elif game["fk_player"] != player["id"]:
+            error, status = "Not player's turn", httplib.FORBIDDEN
+        elif not util.get(template, "opts", "move", "retreat"):
+            error, status = "Unknown action", httplib.BAD_REQUEST
+
+        if not error:
+            pchanges  = {"status": "", "expected": {}}
+            pchanges2, gchanges, tchanges = {}, {}, {}
+
+            move = {"retreat": True}
+            if util.get(template, "opts", "move", "retreat", "uptake", "stack") \
+            and util.get(game, "trick", 0, "stack") is not None:
+                count = util.get(template, "opts", "move", "retreat", "uptake", "stack")
+                if "*" == count: count = sys.maxint
+                uptake = []
+                gchanges["trick"] = copy.deepcopy(game["trick"])
+                stack = gchanges["trick"][0]["stack"]
+                while stack and len(uptake) < count:
+                    uptake.append(stack[-1].pop())
+                    if not stack[-1]: stack.pop()
+                move.update({"uptake": uptake})
+                if not stack and util.get(template, "opts", "talon", "lead") \
+                and game["talon"]:
+                    # Stack has run empty: refill from talon
+                    count = util.get(template, "opts", "talon", "lead")
+                    stack.append(game["talon"][-count:])
+                    gchanges["talon"] = game["talon"][:-count]
+            gmove = dict(move, fk_player=player["id"])
+
+            pchanges["moves"] = copy.deepcopy(player["moves"])
+            if not pchanges["moves"]: pchanges["moves"].append([])
+            pchanges["moves"][-1].append(move)
+            if move.get("uptake"):
+                pchanges["hand0"] = player["hand"]
+                pchanges["hand"] = sort(template, player["hand"] + move["uptake"])
+
+            gchanges["moves"] = copy.deepcopy(game["moves"])
+            if "trick" not in gchanges:
+                gchanges["trick"] = copy.deepcopy(game["trick"])
+            if not game["moves"]: gchanges["moves"].append([])
+            gchanges["moves"][-1].append(gmove)
+            gchanges["trick"].append(gmove)
+
+            player2 = next_player_in_game(template, game, players, player)
+            if player2:
+                gchanges["fk_player"] = player2["id"]
+                pchanges2 = {"expected": get_expected_move(template, game, players, player2)}
+            else: # Game over
+                tchanges.update({"status": "ended"})
+                gchanges.update({"status": "ended", "fk_player": None})
+
+                if game["bid"]:
+                    tchanges["bids"] = table["bids"] + [game["bid"]]
+                if util.get(template, "opts", "points"):
+                    gchanges["score"] = game_points(template, table, game, players)
+                    tchanges["scores"] = table_points(template, table, gchanges["score"])
+                elif util.get(template, "opts", "ranking"):
+                    gchanges["score"] = game_ranking(template, game, players)
+                    tchanges["scores"] = table["scores"] + [gchanges["score"]]
+
+                if is_game_complete(template, dict(table, **tchanges)):
+                    tchanges["status"] = "complete"
+
+                for p in players:
+                    self._tx.update("players", {"dt_changed": util.utcnow()}, id=p["id"])
+
+            self._tx.update("players", pchanges, id=player["id"])
+            self._tx.update("games",   gchanges, id=game["id"])
+            if tchanges:  self._tx.update("tables",  tchanges,  id=table["id"])
+            if pchanges2: self._tx.update("players", pchanges2, id=player2["id"])
 
         return error, status
 
@@ -1290,7 +1475,7 @@ class Table(object):
 
         if faceup is None and game and game["status"] == "ended":
             # Reveal everything at game end
-            faceup = util.get(template["opts"], "reveal")
+            faceup = util.get(template, "opts", "reveal")
 
         if faceup is None and field == "tricks":
             # Render only last trick visible during game
@@ -1300,7 +1485,10 @@ class Table(object):
 
         if faceup is None and field in ("talon", "talon0"):
             # Reveal talon according to game template
-            faceup = util.get(template["opts"], "talon", "face")
+            if value and util.get(template, "opts", "talon", "trump"):
+                result = value[:1] + util.recursive_decode(value[1:], [hider])
+                faceup = True
+            else: faceup = util.get(template, "opts", "talon", "face")
 
         if not faceup:
             result = util.recursive_decode(value, [hider])
@@ -1317,11 +1505,16 @@ def make_deck(template):
 
 def distribute_deck(template, players, deck):
     """
-    Returns deck cards distributed to players and talon, as
-    {"talon": [..cards..], userid1: [..cards..], userid2: [..cards..], }.
+    Returns deck cards distributed to players and talon and lead, as
+    {userid1: [..cards..], userid2: [..cards..],
+     ?"talon": [..cards..], ?"lead": [..cards..], ?"trump": card}.
     """
     result = {x["id"]: [] for x in players}
     maxhand, deck = util.get(template, "opts", "hand"), deck[:]
+
+    if util.get(template, "opts", "talon", "lead"):
+        count = util.get(template, "opts", "talon", "lead")
+        result["lead"], deck = deck[:count], deck[count:]
 
     while deck:
         for p in players:
@@ -1331,6 +1524,9 @@ def distribute_deck(template, players, deck):
         if maxhand and any(len(result[p["id"]]) >= maxhand for p in players) \
         or "talon" in template["opts"] and len(deck) <= len(players):
             break # while
+
+    if util.get(template, "opts", "talon", "trump") and deck:
+        result["trump"] = deck[0]
 
     if deck and "talon" in template["opts"]:
         result["talon"] = deck
@@ -1536,11 +1732,11 @@ def has_allofakind(template, trick):
 
 def next_player_in_round(template, game, players, player):
     """Returns the next player in trick."""
-    result, count = None, 0
+    result, count, player0 = None, 0, player
     while not result and count < len(players):
         result = players[(players.index(player) + 1) % len(players)]
-        if not result["hand"] \
-        or any(x.get("pass") for x in game["trick"] if x["fk_player"] == result["id"]):
+        if not result["hand"] or result is player0 \
+        or any(x.get("pass") for x in game["trick"] if x.get("fk_player") == result["id"]):
             result, player = None, result
         count += 1
     return result
@@ -1548,18 +1744,42 @@ def next_player_in_round(template, game, players, player):
 
 def next_player_in_game(template, game, players, player):
     """Returns the next player in game, one after this player who still has cards."""
-    result, count = None, 0
+    result, count, player0 = None, 0, player
     while not result and count < len(players):
         result = players[(players.index(player) + 1) % len(players)]
-        if not result["hand"]:
+        if not result["hand"] or result is player0:
             result, player = None, result
         count += 1
     return result
 
 
-def last_cards(trick):
-    """Returns last cards played in trick."""
-    return next(x["cards"] for x in trick[::-1] if x.get("cards"))
+def first_cards(template, game):
+    """
+    Returns first cards played in trick, or at least cards relevant for
+    current move if game is not trick-taking game.
+    """
+    result = []
+    if util.get(template, "opts", "stack") \
+    and util.get(game, "trick", 0, "stack") is not None:
+        stack = util.get(game, "trick", 0, "stack") or []
+        if stack: result = stack[-1]
+        if isinstance(util.get(template, "opts", "move", "follow", "cards"), (int, long)):
+            result = result[-util.get(template, "opts", "move", "follow", "cards"):]
+    else:
+        result = next((x["cards"] for x in game["trick"] if x.get("cards")), [])
+    return result
+
+
+def last_cards(template, game):
+    """Returns last cards played in game, or an empty list."""
+    result = []
+    if util.get(template, "opts", "stack") \
+    and util.get(game, "trick", 0, "stack") is not None:
+        stack = util.get(game, "trick", 0, "stack") or []
+        if stack: result = stack[-1]
+    else:
+        result = next((x["cards"] for x in game["trick"][::-1] if x.get("cards")), [])
+    return result
 
 
 def suite(card):
@@ -1620,15 +1840,73 @@ def in_range(value, rng, lower=True, upper=True):
     return (not lower or rng[0] <= value) and (not upper or value <= rng[1])
 
 
-def has_move_right_amount(template, player, cards):
-    """Returns whether player moved the right amount of cards."""
+def has_move_expected_amount(template, cards):
+    """Returns whether player moved the expected amount of cards."""
     result = True
 
     count_needed = 0
     if isinstance(util.get(template, "opts", "move", "cards"), (int, long)):
         count_needed = util.get(template, "opts", "move", "cards")
-
     if count_needed: result = len(cards) == count_needed
+
+    return result
+
+
+def has_move_right_amount(template, game, cards):
+    """Returns whether player moved cards of sufficient amount."""
+    result = True
+
+    lasts = last_cards(template, game)
+    if lasts and util.get(template, "opts", "move", "response", "amount") \
+    and len(cards) < len(lasts): result = False
+
+    return result
+
+
+def has_move_right_level(template, game, cards):
+    """Returns whether player moved cards of sufficient level."""
+    result = True
+
+    lasts = last_cards(template, game)
+    if lasts and util.get(template, "opts", "move", "response", "level") \
+    and cmp_cards(template, cards[0], lasts[-1]) < 0:
+        result = False
+        if util.get(game, "opts", "trump") \
+        and suite(lasts[-1]) != game["opts"]["trump"] \
+        and suite(cards[0]) == game["opts"]["trump"]: result = True
+
+    return result
+
+
+def has_move_right_suite(template, game, player, cards):
+    """Returns whether player moved cards of correct suite."""
+    result = True
+
+    mopts = util.get(template, "opts", "move") or {}
+    firsts = first_cards(template, game)
+    if firsts and game["trick"] and util.get(mopts, "response", "suite") \
+    and not any(x.get("crawl") for x in game["trick"]) \
+    and set(map(suite, cards)) != set(map(suite, firsts)):
+        # Player did not play suite and trick not in crawl mode
+        result = False
+
+    if not result:
+        has_suite = set(map(suite, firsts)) & set(map(suite, player["hand"]))
+        has_trump = util.get(game, "opts", "trump") in set(map(suite, player["hand"]))
+        is_trump  = has_trump and suite(cards[0]) == game["opts"]["trump"]
+
+        if has_suite:
+            if is_trump and "alternative" == util.get(mopts, "response", "suite", "trump"):
+                result = True # Ok to not play suite but trump if template allows
+        elif has_trump:
+            if is_trump:
+                result = True # Ok to play trump if no suite, always
+            elif "mandatory" != util.get(mopts, "response", "suite", "trump"):
+                result = True # Ok to not play trump if no suite and template allows
+        else:
+            if not mopts.get("retreat"):
+                result = True # Ok to play other suite if template allows
+
     return result
 
 
@@ -1651,6 +1929,10 @@ def get_expected_move(template, game, players, player):
         result["action"] = "move"
         if util.get(template, "opts", "move", "cards"):
             result["cards"] = util.get(template, "opts", "move", "cards")
+
+        if util.get(template, "opts", "move", "follow", "cards"):
+            result["follow"] = util.get(template, "opts", "move", "follow", "cards")
+
 
     return result
 

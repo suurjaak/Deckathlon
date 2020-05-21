@@ -7,7 +7,7 @@
  *
  * @author    Erki Suurjaak
  * @created   18.04.2020
- * @modified  19.05.2020
+ * @modified  21.05.2020
  */
 
 body {
@@ -527,6 +527,8 @@ div.table div.moves > div.cards {
 div.tabletop div.moves div.trick div.player {
   display:         flex;
   justify-content: center;
+  left:            calc(50% - 100pt);
+  top:             10%;
   width:           200pt;
 }
 div.tabletop div.moves div.trick div.player.pos1of5,
@@ -588,6 +590,7 @@ div.tabletop div.moves div.trick div.player.pos8of8,
 div.tabletop div.moves div.trick div.player.me {
   bottom:          10%;
   left:            calc(50% - 100pt);
+  top:             unset;
 }
 div.special {
   font-size:       0.8em;
@@ -659,6 +662,20 @@ div.tabletop div.moves div.trick div.stack {
   display:         flex;
   justify-content: center;
   width:           200pt;
+}
+div.tabletop div.moves div.cards div.card {
+  width:           18pt;
+}
+div.tabletop div.moves div.cards div.card:last-child {
+  width:           29pt;
+}
+div.tabletop div.moves div.cards.response {
+  left:            calc(50% - 75pt);
+  width:           100pt;
+}
+div.tabletop div.moves div.cards.follow {
+  left:            calc(50% - 25pt);
+  width:           100pt;
 }
 
 
@@ -890,12 +907,13 @@ div.table div.bids {
 }
 
 
-div.table div.distribute div.card.drop {
+div.table div.card.drop {
    border-radius:   4pt;
    height:          45pt;
    margin:          1pt;
    text-align:      left;
    width:           27pt;
+   z-index:         1;
 }
 div.table div.distribute div.card.drop:empty::after {
   content:          "?";
@@ -905,7 +923,7 @@ div.table div.distribute div.card.drop:empty::after {
   left:             6pt;
   top:              8pt;
 }
-div.table div.distribute div.card.drop span.card {
+div.table div.card.drop span.card {
 /*  margin: -1.5pt -5pt; */
 }
 div.table div.distribute div.player {
@@ -977,6 +995,28 @@ div.tabletop div.extra div.opts {
   font-size:        0.8em;
   text-align:       right;
 }
+div.tabletop div.extra > div.talon {
+  position:         relative;
+}
+div.tabletop div.extra div.talon div.stack {
+  position:         relative;
+  top:              20pt;
+  right:            10pt;
+}
+div.tabletop div.extra div.talon div.stack div.card {
+  transform:        rotate(270deg);
+}
+div.tabletop div.extra div.talon div.trump {
+  position:         absolute;
+  right:            10pt;
+}
+div.tabletop div.extra div.talon div.stack div.count {
+  opacity:          0.5;
+  position:         absolute;
+  top:              calc(50% - 7.5pt);
+  width:            100%;
+  text-align:       center;
+}
 div.tabletop div.extra div.talon + div.opts {
   position:         relative;
   top:              5pt;
@@ -999,6 +1039,14 @@ div.tabletop div.extra div.opts div.trump span.card {
   left:             -2pt;
   top:              3pt;
   font-size:        35pt;
+}
+div.card div.hint {
+  color:            darkgray;
+  font-size:        0.6em;
+  position:         absolute;
+  text-align:       center;
+  top:              calc(50% - 5pt);
+  width:            100%;
 }
 
 

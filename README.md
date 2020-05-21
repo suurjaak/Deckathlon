@@ -124,9 +124,13 @@ Each game is described with a configuration template:
 
         "talon": {            if game has talon:
             "face":           whether talon is face up;
+            "trump":          whether one card from talon goes under talon face-up as trump;
+            "lead":           whether one card from talon goes on table as first move
+                              (can be integer if more than one card);
         },
         "trick":              whether game is a trick-taking game,
                               with each player playing one card per round;
+        "stack":              whether game has a single growing card stack on table;
         "trump":              whether game has trump suite;
 
         "bidding": {          if game has bidding:
@@ -149,9 +153,11 @@ Each game is described with a configuration template:
         },
 
         "lead": {
-            "0":              leader of first round, as "bidder" for player winning bid;
-                              as {"ranking": -1} for player position in current table ranking;
-                              by default the player next to last game's first leader;
+            "0":              leader of first round, 
+                              by default the player next to last game's first leader
+                              (or player next to table host if first game),
+                              or "bidder" for player winning bid,
+                              or {"ranking": -1} for player position in current table ranking;
             "*":              leader of consecutive rounds, "trick" for player winning last trick;
         },
 
@@ -163,9 +169,14 @@ Each game is described with a configuration template:
                               with next players making their move face down as well),
 
             "response": {
-                "level":      whether next player needs to match the card level of previous move;
-                "suite":      whether next player needs to follow the card suite of previous move;
                 "amount":     whether next player needs to match the number of cards in previous move;
+                "level":      whether next player needs to match the card level of previous move;
+                "suite":      whether next player needs to follow the card suite of previous move,
+                              or more options as {
+                  "trump":    "mandatory"   if player must play trump if they have trump but don't have suite
+                              "optional"    if player can play trump if they don't have suite
+                              "alternative" if player can play trump even if they have suite
+                }
             },
 
             "win": {          for non-trick-taking games:
@@ -191,7 +202,7 @@ Each game is described with a configuration template:
                 "*":          sets of cards needed to make this move,
                               as [["AD", "0D"], ["AH", "0H"], ["AS", "0S"], ["AC", "0C"]];
               }
-            },
+            }
         },
 
         "ranking": {
@@ -256,7 +267,7 @@ Each game is described with a configuration template:
           "bidonly": {        condition where player can get points from bids only:
               "min":          minimum score from which player can no longer get points from tricks et al;
           }
-        },
+        }
 
     }
 

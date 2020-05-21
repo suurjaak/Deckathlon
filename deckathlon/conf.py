@@ -9,15 +9,15 @@ Released under the MIT License.
 
 @author      Erki Suurjaak
 @created     18.04.2020
-@modified    19.05.2020
+@modified    21.05.2020
 """
 import os
 
 """Program version."""
 Title       = "Deckathlon"
 Name        = "deckathlon"
-Version     = "0.1.dev28"
-VersionDate = "19.05.2020"
+Version     = "0.1.dev29"
+VersionDate = "21.05.2020"
 Author      = "Erki Suurjaak"
 
 """About-information."""
@@ -207,6 +207,7 @@ DbSchema = {
             "status":      {},
             "opts":        {},
             "deck":        {},
+            "hands":       {},
             "talon":       {},
             "talon0":      {},
             "bids":        {},
