@@ -542,10 +542,9 @@ var TEMPLATE_TABLE = `
             </div>
           </div>
 
-          <button class="give" v-bind:disabled="!distributable" v-on:click="onDistribute">{{ _("Give") }}</button>
-
-          <div v-if="sellable" class="controls">
-            <button v-on:click="onSell" v-bind:title="_('Put talon on sale.')">{{ _("Sell") }}</button>
+          <div class="controls">
+            <button v-bind:disabled="!distributable" v-on:click="onDistribute" class="give">{{ _("Give") }}</button>
+            <button v-if="sellable" v-on:click="onSell" v-bind:title="_('Put talon on sale.')">{{ _("Sell") }}</button>
           </div>
 
         </div>
@@ -593,7 +592,7 @@ var TEMPLATE_TABLE = `
           <div id="trick" v-bind:class="getClass('trick')">
 
             <div v-for="(playerx, i) in otherplayers.concat(player).filter(Boolean)"
-                 v-if="!player || playerx.id != player.id || !isTurn(player)"
+                 v-if="!player || playerx.id != player.id || Util.isEmpty(move)"
                  v-bind:class="getClass('player', i)">
               <template v-for="move in [getLastMove(playerx)]" v-if="move">
                 <div class="cards">
@@ -613,7 +612,7 @@ var TEMPLATE_TABLE = `
 
           </div>
 
-          <div v-if="isTurn(player) && !player.expected.follow" class="cards">
+          <div v-if="!player.expected.follow" class="cards">
             <div v-for="card in move.cards"
                  v-bind:draggable="player"
                  v-on:dragstart  ="player && onDragCardStart('cards', card, $event)" 
@@ -657,9 +656,9 @@ var TEMPLATE_TABLE = `
               <input v-else type="checkbox" v-model="move.crawl" />
               {{ _("Crawl") }}
             </label>
-            <label v-for="special in specialables" v-bind:class="special" v-bind:title="_('Make {0}', special)">
+            <label v-for="special in specialables" v-bind:class="special" v-bind:title="_('Make {0}', _(special))">
               <input type="checkbox" v-model="move[special]" />
-              {{ _(special.capitalize()) }}
+              {{ _(special).capitalize() }}
             </label>
             <button v-bind:disabled="!playable" v-on:click="onMove(true, $event)">{{ _("Play") }}</button>
             <button v-if="retreatable" v-on:click="onRetreat">{{ _("Retreat") }}</button>
@@ -671,7 +670,7 @@ var TEMPLATE_TABLE = `
 
         <div v-if="game" class="extra">
 
-          <div v-for="talon in [getData('talon')]" class="talon">
+          <div v-for="talon in [getData('talon')]" v-if="!Util.isEmpty(talon)" class="talon">
             <div v-if="Util.get(template, 'opts', 'bidding', 'talon')" class="cards">
               <div v-for="card in talon" v-html="Cardery.tag(card)" class="card"></div>
             </div>
@@ -775,7 +774,7 @@ var TEMPLATE_TABLE = `
 
         <fieldset v-if="game && game.discards.length && Util.get(template, 'opts', 'discards')" class="discards">
           <legend>{{ _("Discard pile") }}</legend>
-          <div class="cards" v-bind:title="_('Show last discards')" v-on:click="onShowDiscards(null)">
+          <div class="cards" v-bind:title="_('ended' == game.status ? 'Show discards' : 'Show last discards')" v-on:click="onShowDiscards(null)">
             <div v-for="_ in game.discards" v-html="Cardery.tag(Cardery.FACEDOWN)" class="card"></div>
           </div>
         </fieldset>
@@ -1212,7 +1211,7 @@ Vue.component("page_table", {
       var args = Array.isArray(args) ? args : Array.apply(null, arguments).slice(1);
       var tt = self.template && self.template.i18n[Data.db.settings.get("lang")] || {};
       if (text in tt) {
-        var result = tt[key];
+        var result = tt[text];
         if (args && args.length) result = result.format.apply(result, args);
       } else var result = _(text, args);
       return result;
@@ -1303,7 +1302,7 @@ Vue.component("page_table", {
         result = ("ended" == self.game.status) ? self.game.talon0 : self.game.talon;
       } else if ("hand" == name && self.game) {
         if ("ended" == self.game.status && Util.get(self.template, "opts", "reveal")) {
-          result = self.game.hands[self.player.id];
+          result = self.game.hands[a.id];
         } else if (self.player && a.id == self.player.id) result = self.hand;
         else result = a.hand;
       } else if ("scores" == name && self.table) {
@@ -1654,12 +1653,19 @@ Vue.component("page_table", {
         && (!Util.isNumeric(expected.cards) || (self.move.cards || []).length < expected.cards))
           target = "cards";
 
-        if (!target) Object.keys(expected).some(function(k) {
-          // Find target with room, or just any target
-          if (!Util.isNumeric(expected[k])) return;
-          target = k;
-          if ((self.move[k] || []).length < expected[k]) return true;
-        });
+        if (!target) {
+          var keys = Object.keys(expected);
+          if ("distributing" == self.game.status)
+            keys = Util.intersect(Util.lookup(self.otherplayers, "id").map(String), keys);
+          keys.some(function(k) {
+            // Find target with room, or just any target
+            if (!Util.isNumeric(expected[k])) return;
+            if (!target) target = k;
+            if ((self.move[k] || []).length < expected[k]) return target = k;
+          });
+        };
+        if (!target && "ongoing" == self.game.status && !Util.isEmpty(self.game.trick)
+        && !self.game.trick.some(function(x) { return x.fk_player == self.player.id })) target = "cards";
 
         if (!target || !swap && Util.isNumeric(expected[target]) 
         && (self.move[target] || []).length >= expected[target]) return;

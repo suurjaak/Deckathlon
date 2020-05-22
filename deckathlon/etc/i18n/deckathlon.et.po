@@ -233,6 +233,9 @@ msgstr "Mahaläinud kaardid"
 msgid  "Show last discards"
 msgstr "Näita viimasena mahaläinud kaarte"
 
+msgid  "Show discards"
+msgstr "Näita mahaläinud kaarte"
+
 msgid  "Discards #{0}:"
 msgstr "Mahaläinud kaardid #{0}:"
 

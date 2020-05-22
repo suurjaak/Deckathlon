@@ -421,7 +421,7 @@ div.table div.player.me div.cards button.look {
 div.cards {
   display:          flex;
   justify-content:  center;
-  height:           45pt;
+  height:           46pt;
 }
 div.table div.player.pos1of3 div.cards,
 div.table div.player.pos1of4 div.cards,
@@ -681,6 +681,10 @@ div.tabletop div.moves div.cards.follow {
 
 
 /** Trick history popup styling. */
+#appdialog div.dom div.cards,
+#appdialog div.html div.cards {
+  min-height:      47pt;
+}
 #appdialog div.dom,
 #appdialog div.html {
   display:         flex;
@@ -835,7 +839,7 @@ div.table div.scores thead tr:first-child th {
 #table div.player .discards div.card:last-child {
   width:            29pt;
 }
-#table div.player .discards div.card[title],
+#table div.player .discards div.cards[title] div.card,
 #table div.player .tricks div.card[title] {
   cursor:           pointer;
 }
@@ -892,13 +896,6 @@ div.table div.bidding input[type=number] {
   font-size:        0.9em;
   padding:          3pt;
   width:            40pt;
-}
-div.table div.distribute button.give {
-  position:         absolute;
-  top:              calc(50% - 15pt);
-  left:             calc(50% - 25pt);
-  width:            50pt;
-  height:           30pt;
 }
 div.table div.bids {
   font-size:        0.8em;

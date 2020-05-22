@@ -74,7 +74,7 @@ Released under the MIT License.
 
 @author    Erki Suurjaak
 @created   19.04.2020
-@modified  21.05.2020
+@modified  22.05.2020
 ------------------------------------------------------------------------------
 """
 import collections
@@ -655,7 +655,8 @@ class Table(object):
                     if game0["bids"]: # Previous game's first bidder
                         player0id = game0["bids"][0]["fk_player"]
                     elif game0["tricks"]: # Previous game's first mover
-                        player0id = game0["tricks"][0][0]["fk_player"]
+                        player0id = next(y["fk_player"] for x in game0["tricks"]
+                                         for y in x if y.get("fk_player"))
                     if player0id:
                         player0 = next((x for x in players if x["id"] == player0id), player0)
                 if game0 and not game0["score"]:
@@ -1021,7 +1022,8 @@ class Table(object):
                         player2 = playersx[util.get(template, "opts", "lead", "0", "ranking")]
                         gchanges["fk_player"] = player2["id"]
                     else:
-                        player0id = game0["tricks"][0][0]["fk_player"]
+                        player0id = next(y["fk_player"] for x in game0["tricks"]
+                                         for y in x if y.get("fk_player"))
                         player0 = next(x for x in players if x["id"] == player0id)
                         player2 = next_player_in_game(template, game, players, player0)
                         gchanges["fk_player"] = player2["id"]
@@ -1206,9 +1208,9 @@ class Table(object):
 
             player.update(pchanges)
             playerids_ingame = set(x["id"] for x in players if x["hand"])
-            playerids_passed = set(x["fk_player"] for x in gchanges["trick"] if x.get("pass"))
+            playerids_passed = set(x["fk_player"] for x in gchanges["trick"] if x.get("pass") and x.get("fk_player"))
             playerid_lastmove = next((x["fk_player"] for x in gchanges["trick"][::-1]
-                                      if not x.get("pass")), None)
+                                      if not x.get("pass") and x.get("fk_player")), None)
 
             round_over = game_over = False
             if util.get(template, "opts", "trick") and len(gchanges["trick"]) == len(players):
@@ -1570,7 +1572,7 @@ def cmp_cards(template, a, b, sort=False):
 
 def round_winner(template, game, players, trick):
     """Returns ID of game player who won the trick."""
-    playerid = trick[0]["fk_player"]
+    playerid = next(x["fk_player"] for x in trick if x.get("fk_player"))
 
     if util.get(template, "opts", "trick"):
         wsuite, wlevel = None, None
@@ -1580,7 +1582,7 @@ def round_winner(template, game, players, trick):
             wlevel = level(next(x["cards"][0] for x in trick if x.get("cards")))
 
         for move in trick:
-            if not move.get("cards"): continue # for move
+            if not move.get("cards") or not move.get("fk_player"): continue # for move
             msuite, mlevel = next((suite(x), level(x)) for x in move["cards"])
             if util.get(template, "opts", "trump") \
             and msuite == util.get(game, "opts", "trump") and msuite != wsuite:
@@ -1589,7 +1591,8 @@ def round_winner(template, game, players, trick):
                 wlevel, playerid = mlevel, move["fk_player"]
 
     elif util.get(template, "opts", "move", "win", "last"):
-        playerid = next(x["fk_player"] for x in trick[::-1] if x.get("cards"))
+        playerid = next(x["fk_player"] for x in trick[::-1]
+                        if x.get("cards") and x.get("fk_player"))
 
     return next(x for x in players if x["id"] == playerid)
 
