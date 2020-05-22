@@ -2,6 +2,7 @@
 Index page template.
 
 @param   data            {datatype: [rows], }
+@param   lang            code
 @param   langs           [code, ]
 @param   poll            ?{url: "poll", interval: millis}
 @param   schema          {url, datatype: {url, key, fields: {name: {name, key, fk, fklabel}, }}, }
@@ -13,7 +14,7 @@ Released under the MIT License.
 
 @author      Erki Suurjaak
 @created     18.04.2020
-@modified    19.05.2020
+@modified    22.05.2020
 %"""
 %from deckathlon import conf
 %from deckathlon.lib import util
@@ -51,6 +52,12 @@ Released under the MIT License.
   var translations = Util.jsonLoad({{! repr(util.json_dumps(translations, indent=None)) }});
   var typedata     = Util.jsonLoad({{! repr(util.json_dumps(data,         indent=None)) }});
   var typeschema   = Util.jsonLoad({{! repr(util.json_dumps(schema,       indent=None)) }});
+
+  typeschema.templates.transform = function(item) {
+    var tt = item.i18n[{{! repr(lang) }}] || {};
+    Object.keys(item).forEach(function(k) { var key = "template." + k; if (key in tt) item[k] = tt[key]; });
+    return item;
+  };
 
   Locale.init(translations);
   Data.configure({schema: typeschema, data: typedata, rootURL: (typedata.settings || {}).dataURL});

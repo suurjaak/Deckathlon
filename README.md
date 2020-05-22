@@ -40,9 +40,9 @@ Localization
 Uses Portable Object (.po) files, residing under `deckathlon/etc/i18n`,
 language selection specified in configuration.
 
-Translations can be game template-specific, with identifiers in the form
-`template__TEMPLATENAME__TEXT`. For example, `template__Thousand__Thousand`
-would hold the translated name for game template "Thousand".
+Game templates can specify their own translations, both for template properties
+like name and description plus any translation strings, in templates.i18n,
+as {language code: {"template.propertyname" or text: translation}}.
 
 
 

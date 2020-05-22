@@ -8,7 +8,7 @@ Released under the MIT License.
 
 @author      Erki Suurjaak
 @created     18.04.2020
-@modified    15.05.2020
+@modified    22.05.2020
 """
 import datetime
 import httplib
@@ -223,7 +223,7 @@ def table(shortid):
     schema = conf.DbSchema
 
     userid = request.session.get("userid")
-    data, error, status = model.pagedata(request, "table", userid, shortid=shortid)
+    data, error, status = model.pagedata(request, "table", lang, userid, shortid=shortid)
     if httplib.NOT_FOUND == status:
         return bottle.redirect(request.app.get_url("/"))
     elif error:
@@ -256,10 +256,10 @@ def index():
 
     userid = request.session.get("userid")
     if not userid:
-        data, error, status = model.pagedata(request, "login")
+        data, error, status = model.pagedata(request, "login", lang)
         return bottle.template("login.tpl", locals(), schema=conf.DbSchema)
 
-    data, error, status = model.pagedata(request, "index", userid)
+    data, error, status = model.pagedata(request, "index", lang, userid)
     poll = {"url": "poll", "interval": conf.PollInterval}
     return bottle.template("index.tpl", locals())
 

@@ -8,23 +8,13 @@
  *
  * @author    Erki Suurjaak
  * @created   18.04.2020
- * @modified  21.05.2020
+ * @modified  22.05.2020
  */
 
 
 var AppActions = PubSub.topic([
   "dialog",         // Show modal dialog  (text, {close: onCloseDialog(clickedOk), cancel: true if cancel-button})
 ]);
-
-
-/** Returns game-specific translation if available, default otherwise. */
-var templatize = function(template, text, args) {
-    var key = ["template", template.name, text].join("__");
-    var result = _(key);
-    if (result == key) result = _(text);
-    if (args && args.length) result = result.format.apply(result, args);
-    return result;
-};
 
 
 
@@ -211,7 +201,7 @@ var TEMPLATE_INDEX = `
           <td>
             <select v-model="table_template" id="table_template">
               <option></option>
-              <option v-for="item in templates" v-bind:key="item.id" v-bind:value="item.id">{{ getTemplateName(item.id) }}</option>
+              <option v-for="item in templates" v-bind:key="item.id" v-bind:value="item.id">{{ item.name }}</option>
             </select>
 
             <a v-bind:class="table_template && Data.db.templates.rw.get(table_template).description ? '' : 'disabled'" 
@@ -259,7 +249,7 @@ Vue.component("index", {
   mounted: function() {
     var self = this;
     self.alltables = Data.db.tables.list().map(function(x) {
-      x.template = self.getTemplateName(x.fk_template);
+      x.template = Data.db.templates.rw.get(x.fk_template).name;
       x.host     = Data.db.users.rw.get(x.fk_host).username;
       return x;
     });
@@ -280,25 +270,12 @@ Vue.component("index", {
 
   methods: {
 
-    /**
-     * Returns template name, translated if possible.
-     */
-    getTemplateName: function(templateid) {
-      var self = this;
-      var template = Data.db.templates.rw.get(templateid);
-      var key = ["template", template.name, template.name].join("__");
-      var result = _(key);
-      if (result == key) result = template.name;
-      return result;
-    },
-
-
     onData: function(type) {
       var self = this;
       if ("user" == type) self.user = Data.db.user.get();
       else if ("tables" == type) {
         self.alltables = Data.db.tables.list().map(function(x) {
-          x.template = self.getTemplateName(x.fk_template);
+          x.template = Data.db.templates.rw.get(x.fk_template).name;
           x.host     = Data.db.users.rw.get(x.fk_host).username;
           return x;
         });
@@ -332,10 +309,8 @@ Vue.component("index", {
       var template = Data.db.templates.rw.get(self.table_template);
       if (!template) return;
 
-      var text = templatize(template, "description");
-      if (text == "description") text = template.description;
-      var dom = Util.createElement("div", {"class": "text"}, markdown(text));
-      AppActions.dialog(templatize(template, template.name), {dom: dom, onclose: self.onNew});
+      var dom = Util.createElement("div", {"class": "text"}, markdown(template.description));
+      AppActions.dialog(template.name, {dom: dom, onclose: self.onNew});
     },
 
     onOpenTable: function(item) {
@@ -535,7 +510,7 @@ var TEMPLATE_TABLE = `
   <div v-if="table" id="table">
 
     <h3>
-      {{ _("Table: {0} (by {1}, playing {2})", table.name, Util.get(usermap, table.fk_host, "username"), _(template.name)) }}
+      {{ _("Table: {0} (by {1}, playing {2})", table.name, Util.get(usermap, table.fk_host, "username"), template.name) }}
       <a v-if="template && template.description" v-on:click="onShowDescription" v-bind:title="_('Game description')" class="info">i</a>
       <button v-if="player && player.fk_user == table.fk_host"
               v-on:click="onOpenTableMenu" v-bind:title="_('Open table settings')" class="menu">&#x2630;</button>
@@ -1234,7 +1209,12 @@ Vue.component("page_table", {
     _: function(text, args) {
       var self = this;
       var args = Array.isArray(args) ? args : Array.apply(null, arguments).slice(1);
-      return self.template ? templatize(self.template, text, args) : _(text, args);
+      var tt = self.template && self.template.i18n[Data.db.settings.get("lang")] || {};
+      if (text in tt) {
+        var result = tt[key];
+        if (args && args.length) result = result.format.apply(result, args);
+      } else var result = _(text, args);
+      return result;
     },
 
 
@@ -1873,11 +1853,8 @@ Vue.component("page_table", {
     onShowDescription: function() {
       var self = this;
 
-      var key = ["template", self.template.name, "description"].join("__");
-      var text = _(key);
-      if (text == key) text = self.template.description;
-      var dom = Util.createElement("div", {"class": "text"}, markdown(text));
-      AppActions.dialog(self._(self.template.name), {dom: dom});
+      var dom = Util.createElement("div", {"class": "text"}, markdown(self.template.description));
+      AppActions.dialog(self.template.name, {dom: dom});
     },
 
 

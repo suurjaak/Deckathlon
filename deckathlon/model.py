@@ -8,7 +8,7 @@ Released under the MIT License.
 
 @author    Erki Suurjaak
 @created   17.04.2020
-@modified  19.05.2020
+@modified  22.05.2020
 ------------------------------------------------------------------------------
 """
 import datetime
@@ -59,7 +59,7 @@ def login(username, password):
 
 
 @finalize
-def pagedata(request, page, userid=None, **kwargs):
+def pagedata(request, page, lang, userid=None, **kwargs):
     """Returns data for page as {type: [{..}, ]}."""
     result, error, status = {}, None, httplib.OK
     update_offline()
@@ -75,6 +75,7 @@ def pagedata(request, page, userid=None, **kwargs):
         result["settings"] = dict(rootURL=root, dataURL=root + "api/",
                                   staticURL=root + "static/",
                                   page=page,
+                                  lang=lang,
                                   about=conf.About,
                                   title=conf.Title,
                                   author=conf.Author,
