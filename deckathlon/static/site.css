@@ -7,7 +7,7 @@
  *
  * @author    Erki Suurjaak
  * @created   18.04.2020
- * @modified  21.05.2020
+ * @modified  22.05.2020
  */
 
 body {
@@ -1149,6 +1149,9 @@ div.player.me div.name.pulse::after {
 #header a,
 #footer a {
   text-decoration:  none;
+}
+#footer a.active {
+  font-weight:      bold;
 }
 #header a:hover,
 #footer a:hover {

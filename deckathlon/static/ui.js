@@ -436,6 +436,7 @@ var TEMPLATE_FOOTER = `
 
     <div class="langs">
       <a v-for="lang in langs"
+         v-bind:class="lang == Data.db.settings.get('lang') ? 'active' : ''"
          v-bind:href="getLangUrl(lang)">
          {{ _(lang) }}
       </a>
