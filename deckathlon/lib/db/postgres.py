@@ -84,7 +84,6 @@ except ImportError: psycopg2 = None
 from . import Database as DB, Queryable as QQ, Rollback, Transaction as TX
 from . import json_dumps, json_loads
 
-
 logger = logging.getLogger(__name__)
 
 

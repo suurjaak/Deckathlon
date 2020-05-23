@@ -957,7 +957,7 @@ class Table(object):
             self._tx.update("games",  gchanges, id=game["id"])
             self._tx.update("tables", {"status": "ended"}, id=table["id"])
 
-            logger.info("User '%s' triggers redeal with %s in a game of %s on table #%s.",
+            logger.info("User '%s' triggered redeal with %s in a game of %s on table #%s.",
                         self._user['username'],
                         list(set(copts.get("hand", [])) & set(player["hand"])),
                         template["name"], table["id"])

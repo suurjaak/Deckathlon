@@ -77,7 +77,7 @@ Released under the MIT License.
 
 @author      Erki Suurjaak
 @created     05.03.2014
-@modified    13.05.2020
+@modified    23.05.2020
 """
 import collections
 import base64
@@ -87,11 +87,13 @@ import glob
 import imghdr
 import importlib
 import json
+import logging
 import os
 import re
 
 import pytz
 
+logger = logging.getLogger(__name__)
 
 
 def init(engine=None, opts=None, **kwargs):
@@ -359,7 +361,14 @@ def json_loads(s):
             result.append((k, v))
         return [x for _, x in result] if isinstance(data, list) \
                else dict(result) if isinstance(data, dict) else data
-    return None if s is None else json.loads(s, object_hook=convert_recursive)
+    try:
+        return None if s is None else json.loads(s, object_hook=convert_recursive)
+    except Exception:
+        fails = getattr(json_loads, "__fails", set())
+        if hash(s) not in fails: # Avoid spamming logs
+            logger.warn("Failed to parse JSON from %r.", s, exc_info=True)
+            setattr(json_loads, "__fails", fails | set([hash(s)]))
+        return s
 
 
 def json_dumps(data, indent=2, sort_keys=True):
