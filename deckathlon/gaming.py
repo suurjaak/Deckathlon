@@ -1347,7 +1347,8 @@ class Table(object):
                 pchanges2 = {"expected": get_expected_move(template, game, players, player2)}
             else: # Game over
                 tchanges.update({"status": "ended"})
-                gchanges.update({"status": "ended", "fk_player": None})
+                gchanges.update({"status": "ended", "fk_player": None, "trick": [],
+                                 "tricks": copy.deepcopy(game["tricks"]) + [gchanges["trick"]]})
 
                 if game["bid"]:
                     tchanges["bids"] = table["bids"] + [game["bid"]]
