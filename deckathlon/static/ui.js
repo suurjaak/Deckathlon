@@ -592,7 +592,7 @@ var TEMPLATE_TABLE = `
           <div id="trick" v-bind:class="getClass('trick')">
 
             <div v-for="(playerx, i) in otherplayers.concat(player).filter(Boolean)"
-                 v-if="!player || playerx.id != player.id || Util.isEmpty(move)"
+                 v-if="!player || playerx.id != player.id || (Util.isEmpty(move) && expecteds.length < 2)"
                  v-bind:class="getClass('player', i)">
               <template v-for="move in [getLastMove(playerx)]" v-if="move">
                 <div class="cards">
@@ -612,7 +612,7 @@ var TEMPLATE_TABLE = `
 
           </div>
 
-          <div v-if="!player.expected.follow" class="cards">
+          <div v-if="1 == expecteds.length" class="cards">
             <div v-for="card in move.cards"
                  v-bind:draggable="player"
                  v-on:dragstart  ="player && onDragCardStart('cards', card, $event)" 
@@ -621,33 +621,20 @@ var TEMPLATE_TABLE = `
                  class="card"></div>
           </div>
 
-          <div v-else-if="isTurn(player) && player.expected.follow" class="cards response">
-            <div v-for="i in Util.range(player.expected.cards)"
-                 v-bind:draggable="move.cards && move.cards[i]"
-                 v-on:dragstart  ="onDragCardStart('cards', move.cards && move.cards[i], $event)" 
-                 v-on:drop       ="onDropCard('cards', $event)"
-                 v-on:dragover   ="onDragCardTo('cards', $event)"
-                 v-on:dblclick   ="onMoveCard('cards', player.id, move.cards && move.cards[i])"
+          <div v-else-if="isTurn(player)"
+               v-for="key in expecteds"
+               v-bind:class="('cards' == key) ? 'response' : key" class="cards">
+            <div v-for="i in Util.range(player.expected[key])"
+                 v-bind:draggable="move[key] && move[key][i]"
+                 v-on:dragstart  ="onDragCardStart(key, move[key]&& move[key][i], $event)" 
+                 v-on:drop       ="onDropCard(key, $event)"
+                 v-on:dragover   ="onDragCardTo(key, $event)"
+                 v-on:dblclick   ="onMoveCard(key, player.id, move[key] && move[key][i])"
                  class="card drop">
-              <div v-html="Cardery.tag(move.cards && move.cards[i])"></div>
-              <div v-if="Util.isEmpty(move.cards)" class="hint">{{ _("respond") }}</div>
+              <div v-html="Cardery.tag(move[key] && move[key][i])"></div>
+              <div v-if="Util.isEmpty(move[key])" class="hint">{{ _("cards" == key ? "respond" : key) }}</div>
             </div>
           </div>
-
-
-          <div v-if="isTurn(player) && player.expected.follow" class="cards follow">
-            <div v-for="i in Util.range(player.expected.follow)"
-                 v-bind:draggable="move.follow && move.follow[i]"
-                 v-on:dragstart  ="onDragCardStart('follow', move.follow && move.follow[i], $event)" 
-                 v-on:drop       ="onDropCard('follow', $event)"
-                 v-on:dragover   ="onDragCardTo('follow', $event)"
-                 v-on:dblclick   ="onMoveCard('follow', player.id, move.follow && move.follow[i])"
-                 class="card drop">
-              <div v-html="Cardery.tag(move.follow && move.follow[i])"></div>
-              <div v-if="Util.isEmpty(move.follow)" class="hint">{{ _("follow") }}</div>
-            </div>
-          </div>
-
 
 
           <div v-if="isTurn(player)" class="controls">
@@ -685,7 +672,7 @@ var TEMPLATE_TABLE = `
           </div>
 
           <div v-if="!Util.isEmpty(game.opts)" class="opts">
-            <div v-if="game.opts.trump && !Util.get(template, 'opts', 'talon', 'trump')" class="trump">
+            <div v-if="game.opts.trump && (!Util.get(template, 'opts', 'talon', 'trump') || Util.isEmpty(getData('talon')))" class="trump">
               {{ _("Trump") }}
               <div v-bind:class="Cardery.name(game.opts.trump)"
                    v-html="Cardery.tag(game.opts.trump)"></div>
@@ -1096,12 +1083,17 @@ Vue.component("page_table", {
     playable: function() {
       var self = this;
       var result = false;
-      if (self.player && Util.isNumeric(self.player.expected.cards)) {
-        if ((self.move.cards || []).length == self.player.expected.cards) result = true;
-      } else result = Object.keys(self.move).length;
-      if (result && Util.get(self.template, "opts", "move", "follow")) {
-        result = !self.hand.length || !Util.isEmpty(self.move.follow);
-      };
+
+      self.expecteds.some(function(key) {
+        var needed = ("distributing" == self.game.status ? self.player.expected.distribute : self.player.expected)[key];
+        if (Util.isNumeric(needed)) result = ((self.move[key] || []).length == needed);
+        else result = (self.move[key] || []).length; // Any number
+
+        // Extra moves like follow may be optional if player has no more cards to play
+        if (!result && "cards" != key && Util.isEmpty(self.hand)) result = true;
+        return !result;
+      });
+
       return result;
     },
 
@@ -1167,6 +1159,32 @@ Vue.component("page_table", {
           return o;
         }, []);
       };
+
+      return result;
+    },
+
+
+    /**
+     * Returns the currently expected move-sets, e.g. ["cards", "follow"].
+     * Always a single-element array if a simple unstructured move.
+     */
+    expecteds: function() {
+      var self = this;
+      var result = [];
+
+      if (self.player && self.player.expected) {
+        result = Object.keys(self.player.expected);
+        if ("distributing" == self.game.status && self.player.expected.distribute) {
+          result = Object.keys(self.player.expected.distribute);
+          // Set into player order.
+          result = Util.intersect(Util.lookup(self.otherplayers, "id").map(String), result);
+        } else result = result.filter(function(x) {
+          var y = self.player.expected[x];
+          return "*" == y || Util.isNumeric(y); // Drop non-card keys like action="move"
+        });
+      };
+      if (result.indexOf("cards") > 0) // expected.cards as the primary default
+        result.unshift.apply(result, result.splice(result.indexOf("cards"), 1 ));
 
       return result;
     },
@@ -1322,8 +1340,8 @@ Vue.component("page_table", {
       var self = this;
       var result = name;
       if ("trick" == name) {
-        if (!self.game.trick.some(function(x) { return x.fk_player; })) result += " over";
         if (Util.get(self.template, 'opts', 'stack')) result += " stack";
+        if (Util.isEmpty(self.game.trick)) result += " over";
       } else if ("player" == name) {
          result += " pos{0}of{1}".format(a + 1, self.players.length);
       } else if ("name" == name) {
