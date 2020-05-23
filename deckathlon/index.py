@@ -183,7 +183,6 @@ def api_action(datatype, path=""):
     """
     result, error, status = {}, "", httplib.OK
     userid, username = map(request.session.get, ("userid", "username"))
-    logger.info("API call to %s %s/%s by %s.", request.method, datatype, path, username)
     try:
         if "GET" == request.method: data = util.parse_qs(request.query_string)
         else: data = util.json_loads(request.body.read() or request.query_string or "null")
@@ -287,12 +286,12 @@ def init():
 
     defconfigfile = os.path.join(conf.RootPath, "etc", "%s.ini" % conf.Name)
     configfile = os.getenv("%sCONF" % conf.Name.upper(), defconfigfile)
-    logger.info("Using configuration file %s.", configfile)
     util.ini_load(configfile, conf)
     util.init_logger(conf.LogLevel, conf.LogPath, conf.ErrorLogPath,
                      conf.LogFormat, conf.LogExclusions)
     translate.init(conf.DefaultLanguage, conf.TranslationTemplate, conf.AutoReload)
     model.init()
+    logger.info("Initializing app, using configuration file %s.", configfile)
 
     bottle.route("/<url:path>", unsupported)
 

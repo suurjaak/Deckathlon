@@ -8,7 +8,7 @@ Released under the MIT License.
 
 @author    Erki Suurjaak
 @created   17.04.2020
-@modified  22.05.2020
+@modified  23.05.2020
 ------------------------------------------------------------------------------
 """
 import datetime
@@ -34,7 +34,7 @@ def finalize(func):
             result = None, "Unexpected error", httplib.INTERNAL_SERVER_ERROR
         finally:
             try: db.close(cascade=True)
-            except Exception: logger.exception("Error closing database.")
+            except Exception: logger.warn("Error closing database.", exc_info=True)
         return result
     return wrapper
 

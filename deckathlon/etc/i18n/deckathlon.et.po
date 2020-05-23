@@ -6,7 +6,7 @@
 #
 # @author    Erki Suurjaak
 # @created   08.05.2020
-# @modified  21.05.2020
+# @modified  23.05.2020
 
 msgid  "Username"
 msgstr "Kasutajanimi"
@@ -449,17 +449,8 @@ msgstr "uued kaardid"
 msgid  "Game description"
 msgstr "Mängu kirjeldus"
 
-msgid  "Must follow"
-msgstr "Peab käima järgmise kaardi"
-
-msgid  "No need to follow"
-msgstr "Ei pea käima järgmist kaarti"
-
 msgid  "respond"
 msgstr "alla"
-
-msgid  "follow"
-msgstr "peale"
 
 msgid  "Retreat"
 msgstr "Võta üles"
