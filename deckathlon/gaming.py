@@ -1114,6 +1114,8 @@ class Table(object):
                 error, status = "Cannot crawl", httplib.BAD_REQUEST
             elif not cards and not do_pass:
                 error, status = "Not the right amount of cards", httplib.BAD_REQUEST
+            elif do_pass and (cards or do_extra):
+                error, status = "Unknown action", httplib.BAD_REQUEST
             elif len(drop(player["hand"], cards)) > len(player["hand"]) - len(cards):
                 error, status = "No such cards", httplib.BAD_REQUEST
             elif not has_move_expected_amount(template, cards):
@@ -1367,9 +1369,7 @@ class Table(object):
 
 
     def end_game(self):
-        """
-        Marks game as ended, calculates scores and ranking.
-        """
+        """Marks game as ended, calculates scores and ranking."""
         table, template, game, players = self.populate(
             template=True, game=True, players=True, refresh=True
         )
@@ -1975,78 +1975,3 @@ def get_expected_move(template, game, players, player):
 
 
     return result
-
-
-
-if "__main__" == __name__:
-    def test():
-        import json
-        template = {"opts": json.loads("""{
-            "cards":     ["9D", "9H", "9S", "9C", "JD", "JH", "JS", "JC", "QD", "QH", "QS", "QC", "KD", "KH", "KS", "KC", "0D", "0H", "0S", "0C", "AD", "AH", "AS", "AC"],
-            "levels":    "9JQK0A",
-            "suites":    "DHSC",
-            "points":    {"9": 0, "0": 10, "J": 2, "Q": 3, "K": 4, "A": 11},
-            "players":   [3, 4],
-            "hand":      7,
-            "sort":      ["suite", "strength"],
-
-            "talon":    {
-                "face":       false
-            },
-            "trick":    true,
-            "bid":      {
-                "min":         60,
-                "max":         340,
-                "step":        5,
-                "pass":        true,
-                "pass_final":  true,
-                "talon":       true,
-                "aftermarket": true,
-                "distribute":  true,
-                "blind":       true,
-                "distribute":  1
-            },
-
-            "lead":     {
-                "0":    "bidder",
-                "*":    "trick"
-            },
-            "move":     {
-                "cards":   1,
-                "pass":    false,
-                "blind":   0,
-                "response":  {
-                  "suite":   true
-                }
-            },
-            "order":    true,
-            "pass":     false,
-            "redeal":   {
-                "reveal":      true
-            }
-        }
-        """)}
-        players = [{"id": i} for i in range(4)]
-        deck = make_deck(template)
-        # print distribute_deck(template, players, deck)
-
-        from deckathlon import model
-        model.init()
-        template = db.fetchone("templates")
-        table = db.fetchone("tables")
-        table["scores"] = table["scores"][:-1]
-        lastscores = {
-          "1": 0, 
-          "8": 0, 
-          "9": 60, 
-          "10": 0
-        }
-
-
-        #template = db.fetchone("templates", name="Arschloch")
-        #players = db.fetchall("players", fk_table=14, order="sequence")
-
-        for p in db.fetchall("players", fk_table=14, order="sequence"):
-            print p["id"], len(p["hand0"]), p["hand0"]
-            #print p["id"], len(p["hand"]), p["hand"]
-    test()

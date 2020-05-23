@@ -253,7 +253,7 @@ Vue.component("index", {
     self.alltables = Data.db.tables.list().map(function(x) {
       x.template = Data.db.templates.rw.get(x.fk_template).name;
       x.host     = Data.db.users.rw.get(x.fk_host).username;
-      x.status   = ("ended" == x.status ? "" : x.status);
+      x.status   = (["new", "ongoing"].indexOf(x.status) >= 0 ? x.status : "");
       return x;
     });
     self.tables    = self.alltables.slice();
