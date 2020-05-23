@@ -62,6 +62,9 @@ msgstr "Mäng"
 msgid  "Host"
 msgstr "Omanik"
 
+msgid  "Status"
+msgstr "Seis"
+
 msgid  "User"
 msgstr "Kasutaja"
 
@@ -70,6 +73,12 @@ msgstr "Mängija"
 
 msgid  "Players"
 msgstr "Mängijad"
+
+msgid  "new"
+msgstr "uus"
+
+msgid  "ongoing"
+msgstr "käimas"
 
 msgid  "New game table"
 msgstr "Tee uus laud"

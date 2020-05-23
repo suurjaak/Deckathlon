@@ -73,13 +73,9 @@ def pagedata(request, page, lang, userid=None, **kwargs):
     if not error:
         root = request.app.get_url("/")
         result["settings"] = dict(rootURL=root, dataURL=root + "api/",
-                                  staticURL=root + "static/",
-                                  page=page,
-                                  lang=lang,
-                                  about=conf.About,
-                                  title=conf.Title,
-                                  author=conf.Author,
-                                  version=conf.Version,
+                                  staticURL=root + "static/", page=page,
+                                  lang=lang, about=conf.About, title=conf.Title,
+                                  author=conf.Author, version=conf.Version,
                                   versiondate=conf.VersionDate)
 
     if not error and userid:

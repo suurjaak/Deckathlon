@@ -585,7 +585,7 @@ class Table(object):
         result = self.adapt_data(result)
 
         if error:
-            logger.info("User '%s' action '%s' failed with %s: %s.",
+            logger.info("User '%s' action '%s' rejected with %s: %s.",
                         self._user["username"], data["action"], status, error)
 
         self.finalize()

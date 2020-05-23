@@ -8,7 +8,7 @@
  *
  * @author    Erki Suurjaak
  * @created   18.04.2020
- * @modified  22.05.2020
+ * @modified  23.05.2020
  */
 
 
@@ -153,6 +153,7 @@ var TEMPLATE_INDEX = `
             <th>{{ _("Table") }}</th>
             <th>{{ _("Game") }}</th>
             <th>{{ _("Host") }}</th>
+            <th>{{ _("Status") }}</th>
             <th>{{ _("Players") }}</th>
           </tr>
         </thead>
@@ -166,6 +167,7 @@ var TEMPLATE_INDEX = `
             </td>
             <td>{{ item.template }}</td>
             <td>{{ item.host }}</td>
+            <td>{{ _(item.status) }}</td>
             <td>
               {{ item.players }}
               <span v-if="user && item.users.indexOf(user.id) >= 0"
@@ -251,6 +253,7 @@ Vue.component("index", {
     self.alltables = Data.db.tables.list().map(function(x) {
       x.template = Data.db.templates.rw.get(x.fk_template).name;
       x.host     = Data.db.users.rw.get(x.fk_host).username;
+      x.status   = ("ended" == x.status ? "" : x.status);
       return x;
     });
     self.tables    = self.alltables.slice();
