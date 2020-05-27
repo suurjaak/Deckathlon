@@ -6,7 +6,7 @@
 --
 -- @author    Erki Suurjaak
 -- @created   08.05.2020
--- @modified  23.05.2020
+-- @modified  27.05.2020
 
 CREATE TABLE IF NOT EXISTS users (
   id         INTEGER   PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS games (
   bid        JSON      NOT NULL DEFAULT '{}',
   tricks     JSON      NOT NULL DEFAULT '[]',
   trick      JSON      NOT NULL DEFAULT '[]',
-  moves      JSON      DEFAULT '[]',
+  moves      JSON      NOT NULL DEFAULT '[]',
   discards   JSON      NOT NULL DEFAULT '[]',
   score      JSON      NOT NULL DEFAULT '{}',
   dt_created TIMESTAMP NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f000+00:00', 'now')),

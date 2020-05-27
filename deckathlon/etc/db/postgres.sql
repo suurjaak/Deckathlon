@@ -6,7 +6,7 @@
 --
 -- @author    Erki Suurjaak
 -- @created   08.05.2020
--- @modified  23.05.2020
+-- @modified  27.05.2020
 
 CREATE OR REPLACE FUNCTION update_row_timestamp() RETURNS trigger
     LANGUAGE plpgsql
@@ -34,7 +34,7 @@ CREATE TABLE games (
   bid        JSONB     NOT NULL DEFAULT '{}',
   tricks     JSONB     NOT NULL DEFAULT '[]',
   trick      JSONB     NOT NULL DEFAULT '[]',
-  moves      JSONB     DEFAULT '[]',
+  moves      JSONB     NOT NULL DEFAULT '[]',
   discards   JSONB     NOT NULL DEFAULT '[]',
   score      JSONB     NOT NULL DEFAULT '{}',
   dt_created TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
