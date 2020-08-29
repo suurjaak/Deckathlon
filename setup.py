@@ -4,7 +4,7 @@ Setup.py for Deckathlon.
 
 @author      Erki Suurjaak
 @created     18.04.2020
-@modified    03.05.2020
+@modified    29.08.2020
 ------------------------------------------------------------------------------
 """
 import setuptools
@@ -14,7 +14,7 @@ from deckathlon import conf
 setuptools.setup(
     name=conf.Name,
     version=conf.Version,
-    description="Web application for playing card games.",
+    description="A card game website.",
 
     author="Erki Suurjaak",
     author_email="erki@lap.ee",
@@ -25,14 +25,13 @@ setuptools.setup(
     include_package_data=True, # Use MANIFEST.in for data files
     classifiers=[
         "Programming Language :: Python :: 2",
-        "Programming Language :: Python :: 2.6",
         "Programming Language :: Python :: 2.7",
     ],
 
     long_description=
-"""Web application for playing card games.
+"""A card game website. Users can register an account, create their own game table, 
+or join an existing one as player or spectator.
 
-Users can login or register, create game templates, create game tables,
-join existing tables to play or spectate.
+Comes installed with a few game templates, more can be added.
 """,
 )

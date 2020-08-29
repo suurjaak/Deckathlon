@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Configuration settings. Can read additional/overridden options from INI file,
-supporting any JSON-serializable datatype, as well as Python literal eval.
+Configuration settings.
 
 ------------------------------------------------------------------------------
 This file is part of Deckathlon - card game website.
@@ -9,7 +8,7 @@ Released under the MIT License.
 
 @author      Erki Suurjaak
 @created     18.04.2020
-@modified    27.05.2020
+@modified    29.08.2020
 """
 import os
 
@@ -17,7 +16,7 @@ import os
 Title       = "Deckathlon"
 Name        = "deckathlon"
 Version     = "0.1.dev36"
-VersionDate = "27.05.2020"
+VersionDate = "29.08.2020"
 Author      = "Erki Suurjaak"
 
 """About-information."""
@@ -28,10 +27,10 @@ Released as free open source software under the MIT license.
 Built with open source:
 - [Python](https://www.python.org)
 - [bottle](https://bottlepy.org)
-- [beaker](https://github.com/bbangert/beaker)
-- [polib](https://bitbucket.org/izi/polib)
-- [pytz](https://pythonhosted.org/pytz/)
-- [psycopg2](https://github.com/psycopg/psycopg2)
+- [beaker](https://pypi.org/project/Beaker)
+- [polib](https://pypi.org/project/polib)
+- [pytz](https://pypi.org/project/pytz)
+- [psycopg2](https://pypi.org/project/psycopg2)
 - [DejaVu Sans](https://github.com/web-fonts/dejavu-sans)
 - [Vue.js](https://github.com/vuejs/vue)
 - [drawdown](https://github.com/adamvleggett/drawdown)
