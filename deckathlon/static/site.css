@@ -7,7 +7,7 @@
  *
  * @author    Erki Suurjaak
  * @created   18.04.2020
- * @modified  23.05.2020
+ * @modified  09.06.2020
  */
 
 body {
@@ -258,7 +258,11 @@ button.menu {
 }
 #index div.tables th:nth-child(n+2),
 #index div.tables td:nth-child(n+2) {
+  max-width:        200pt;
+  overflow-x:       hidden;
   padding-left:     5pt;
+  text-overflow:    ellipsis;
+  white-space:      nowrap;
 }
 #index div.tables th:first-child,
 #index div.tables td:first-child {
