@@ -1,0 +1,252 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="chrome=1">
+  <title>Deckathlon</title>
+  <link rel="icon" type="image/vnd.microsoft.icon" href="img/favicon.ico" />
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="js/scale.fix.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <!--[if lt IE 9]>
+  <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+  <![endif]-->
+</head>
+<body><div class="wrapper">
+<header class="dinky">
+  <a href="index.html"><h1>Deckathlon</h1></a>
+  <p>A card game website engine.</p>
+
+  <ul>
+    <li><a class="buttons index"   href="index.html">Index</a></li>
+    <li><a class="buttons cards"   href="games.html">Games</a></li>
+    <li><a class="buttons screens" href="screens.html">Screenshots</a></li>
+    <li><a class="buttons engine"  href="engine.html">Engine</a></li>
+    <li><a class="buttons zip"     href="https://erki.lap.ee/downloads/Deckathlon/deckathlon-1.0.zip">Download ZIP</a></li>
+    <li><a class="buttons github" href="https://github.com/suurjaak/Deckathlon">View On GitHub</a></li>
+  </ul>
+
+  <p>This project is maintained by <a class="name" href="https://github.com/suurjaak">suurjaak</a></p>
+</header>
+
+<section class="dinky">
+<h1><a name="deckathlon" class="anchor" href="#deckathlon"><span class="octicon octicon-link"></span></a>Deckathlon</h1>
+
+<p>
+A card game website engine. Users can register an account, create their own 
+game table, or join an existing one as player or spectator.
+</p>
+
+<p>
+Comes installed with a few game templates, more can be added.
+</p>
+
+
+
+<h2>
+<a name="installation" class="anchor" href="#installation"><span class="octicon octicon-link"></span></a>Installation</h2>
+
+
+Download and unpack ZIP, install Python and pip, run <code>pip install -r requirements.txt</code> in deckathlon folder.
+
+By default, Deckathlon uses SQLite as database engine, created automatically.
+To use Postgres, create the database, populate it with <code>deckathlon/etc/db/postgres.sql</code>,
+and add at least the following to <code>deckathlon/etc/deckatlhon.ini</code>:
+
+<pre>
+DbEngine = "postgres"
+DbOpts.database = "myname"
+DbOpts.username = "myuser"
+</pre>
+
+
+
+<h2>
+<a name="running-the-program" class="anchor" href="#running-the-program"><span class="octicon octicon-link"></span></a>Running The Program</h2>
+
+<p>
+Deckathlon can be run as a stand-alone web server:
+
+<pre>
+python -m deckathlon
+</pre>
+
+Or under a WSGI-supporting web server like Apache, see <code>deckathlon.wsgi</code>.
+</p>
+
+
+
+<h2>
+<a name="configuration" class="anchor" href="#configuration"><span class="octicon octicon-link"></span></a>Configuration</h2>
+
+
+<p>
+Default configuration file is <code>deckathlon/etc/deckatlhon.ini</code>, can be overridden
+with environment variable <code>DECKATHLONCONF</code> specifying another path.
+</p>
+
+
+SQLite parameters:
+<pre>
+DbEngine = "sqlite"
+DbOpts = "path to SQLite db"
+</pre>
+
+
+Postgres parameters:
+<pre>
+DbEngine = "postgres"
+DbOpts.database = "myname"
+DbOpts.username = "myuser"
+DbOpts.password = "mypass"
+DbOpts.host     = "localhost"
+DbOpts.port     = 5432
+DbOpts.minconn  = 1
+DbOpts.maxconn  = 4
+</pre>
+
+
+Web server parameters:
+<pre>
+ServerIP      = "0.0.0.0"
+ServerPort    = 9000
+ServerPrefix  = "extra prefix if using reverse proxy"
+ServerBackend = "wsgiref or paste or cherrypy etc if running as stand-alone"
+SessionPath   = "path to login session files"
+Quiet         = True
+</pre>
+
+
+Localization parameters:
+<pre>
+Languages       = ["en", "et"]
+DefaultLanguage = "en"
+</pre>
+
+
+Logging parameters:
+<pre>
+LogLevel     = "DEBUG"
+LogPath      = "path to log file"
+ErrorLogPath = "path to error log file if separate from log file"
+</pre>
+
+
+Game engine parameters:
+<pre>
+OfflineInterval      = 180 # Seconds after which player is considered offline
+OnlineUpdateInterval = 30  # Seconds between updating player online status
+PollInterval         = 1   # Seconds between data update poll requests
+</pre>
+
+
+
+<h2>
+<a name="localization" class="anchor" href="#localization"><span class="octicon octicon-link"></span></a>Localization</h2>
+
+
+<p>
+Uses Portable Object (.po) files, residing under <code>deckathlon/etc/i18n</code>,
+language selection specified in configuration.
+</p>
+
+Game templates can specify their own translations, both for template properties
+like name and description plus any translation strings, in <code>templates.i18n</code>, as <br />
+<code>{language code: {"template.propertyname" or text: translation}}</code>.
+</p>
+
+
+
+
+<h2>
+<a name="source-dependencies" class="anchor" href="#source-dependencies"><span class="octicon octicon-link"></span></a>Source Dependencies</h2>
+
+<p>
+Deckathlon needs Python 2.7,
+and the following 3rd-party Python packages:
+
+<ul>
+<li>Bottle (<a href="https://bottlepy.org">bottlepy.org</a>,                       MIT license)</li>
+<li>beaker (<a href="https://pypi.org/project/beaker">pypi.org/project/beaker</a>, BSD license)</li>
+<li>polib  (<a href="https://pypi.org/project/polib">pypi.org/project/polib</a>,   MIT license)</li>
+<li>pytz   (<a href="https://pypi.org/project/pytz">pypi.org/project/pytz</a>,     MIT license)</li>
+</ul>
+
+If using Postgres database engine:
+<ul>
+<li>psycopg2 (<a href="https://pypi.org/project/psycopg2">pypi.org/project/psycopg2</a>, LGPL)</li>
+</ul>
+</p>
+
+
+
+
+
+<h2>
+<a name="attribution" class="anchor" href="#attribution"><span class="octicon octicon-link"></span></a>Attribution</h2>
+
+<p>
+Includes font DejaVu Sans, CC BY-NC-ND 4.0,
+<a href="https://github.com/web-fonts/dejavu-sans">github.com/web-fonts/dejavu-sans</a>, vendored under <code>static/media/</code>.
+</p>
+
+<p>
+Uses Vue.js (<a href="https://github.com/vuejs/vue">github.com/vuejs/vue</a>, MIT license),
+&copy; 2013 Yuxi (Evan) You, vendored under <code>static/vendor/</code>.
+</p>
+
+<p>
+Uses drawdown (<a href="https://github.com/adamvleggett/drawdown">github.com/adamvleggett/drawdown</a>, MIT license),
+&copy; 2016 Adam Leggett, vendored under <code>static/vendor/</code>.
+<p>
+
+<p>
+Site favicon from Fugue Icons,
+&copy; 2010 Yusuke Kamiyamane, <a href="https://p.yusukekamiyamane.com">p.yusukekamiyamane.com</a>.
+</p>
+
+
+<h2>
+<a name="license" class="anchor" href="#license"><span class="octicon octicon-link"></span></a>License</h2>
+
+<p>The MIT License<br />
+Copyright &copy; 2020 by Erki Suurjaak</p>
+
+<p>Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:</p>
+
+<p>The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.</p>
+
+<p>The software is provided "as is", without warranty of any kind, express or
+implied, including but not limited to the warranties of merchantability,
+fitness for a particular purpose and noninfringement. In no event shall the
+authors or copyright holders be liable for any claim, damages or other
+liability, whether in an action of contract, tort or otherwise, arising from,
+out of or in connection with the software or the use or other dealings in
+the software.</p>
+
+</section>
+<footer class="dinky">
+  <p><small>Hosted on <a href="http://pages.github.com">GitHub Pages</a> using the Dinky theme</small></p>
+</footer>
+</div>
+
+<!--[if !IE]><script>fixScale(document);</script><![endif]-->
+<script type="text/javascript">
+  var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+  document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+</script>
+<script type="text/javascript">
+  try {
+    var pageTracker = _gat._getTracker("UA-49523911-1");
+    pageTracker._trackPageview();
+  } catch(err) {}
+</script>
+
+</body>
+</html>

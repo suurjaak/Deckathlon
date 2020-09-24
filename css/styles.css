@@ -1,0 +1,413 @@
+@import url(https://fonts.googleapis.com/css?family=Arvo:400,700,400italic);
+
+.dinky h1, .dinky h2, .dinky h3 {
+	font-family: Arvo, Monaco, serif;
+  line-height: 1.3;
+	font-weight: normal;
+	display: block;
+	border-bottom: 1px solid #ccc;
+	padding-bottom: 5px;
+}
+
+header p {
+	font-size: 16px;
+  line-height: 25px;
+}
+
+
+.dinky * {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  vertical-align: baseline;
+}
+
+/* Base text styles */
+
+body {
+  padding: 10px 50px 0 0;
+	background-color: #FBFAF7;
+	color: #232323;
+	margin: 0;
+	-webkit-font-smoothing: antialiased;
+}
+
+section.dinky {
+	font-size: 14px;
+	line-height: 1.8em;
+  width: 660px;
+}
+
+header {
+	margin: 0;
+	line-height: 1.8em;
+  min-height: 220px;
+	-webkit-font-smoothing: antialiased;
+}
+
+.dinky h1, .dinky h2, .dinky h3 {
+  color: #232323;
+  margin: 0px 0 10px;
+}
+
+.dinky p, .dinky ul, .dinky ol, .dinky table, .dinky dl {
+  margin: 0 0 22px;
+}
+
+.dinky h1 {
+	font-size: 30px;
+}
+
+.dinky h2 {
+	font-size: 24px;
+}
+
+.dinky h3 {
+	font-size: 18px;
+}
+
+.dinky a {
+  color: #C30000;
+  font-weight: 200;
+  text-decoration: none;
+}
+
+.dinky a:hover {
+	text-decoration: underline;
+}
+
+.dinky em {
+	font-style: italic;
+}
+
+.dinky strong {
+  font-weight:700;
+}
+
+.dinky ul {
+  list-style: inside;
+  padding-left: 25px;
+}
+
+.dinky ol {
+  list-style: decimal inside;
+  padding-left: 20px;
+}
+
+.dinky blockquote {
+  margin: 0;
+  padding: 0 0 0 20px;
+  font-style: italic;
+}
+
+.dinky hr {
+  border:0;
+  background:#ccc;
+  height:1px;
+  margin:0 0 24px;
+}
+
+/* Images */
+.dinky img {
+  position: relative;
+  margin: 0 auto;
+  max-width: 650px;
+  padding: 5px;
+  margin: 10px 0 32px 0;
+  border: 1px solid #ccc;
+}
+
+.dinky p img {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  vertical-align: middle;
+  text-align: center;
+  border: none;
+}
+
+/* Code blocks */
+.dinky code, .dinky pre {
+	font-family: "Courier New", Monaco, "Bitstream Vera Sans Mono", "Lucida Console", Terminal, monospace;
+  color:#000;
+  font-size:14px;
+}
+
+.dinky pre {
+	padding: 4px 12px;
+  background: #FDFEFB;
+  border-radius:4px;
+  border:1px solid #D7D8C8;
+  overflow: auto;
+  overflow-y: hidden;
+	margin-bottom: 32px;
+  width: max-content;
+}
+
+
+/* Tables */
+.dinky table {
+  width: 100%;
+  border: 1px solid #ccc;
+  margin-bottom: 32px;
+  text-align: left;
+ }
+
+.dinky th {
+  font-family: 'Arvo', Helvetica, Arial, sans-serif;
+	font-size: 18px;
+	font-weight: normal;
+  padding: 10px;
+  background: #232323;
+  color: #FDFEFB;
+ }
+
+.dinky td {
+  padding: 10px;
+	background: #ccc;
+ }
+
+
+/* Header */
+header {
+	background-color: #171717;
+	color: #FDFDFB;
+  width:170px;
+  float:left;
+  position:fixed;
+	border: 1px solid #000;
+	-webkit-border-top-right-radius: 4px;
+	-webkit-border-bottom-right-radius: 4px;
+	-moz-border-radius-topright: 4px;
+	-moz-border-radius-bottomright: 4px;
+	border-top-right-radius: 4px;
+	border-bottom-right-radius: 4px;
+	padding: 34px 25px 22px 50px;
+	margin: 30px 25px 0 0;
+	-webkit-font-smoothing: antialiased;
+}
+
+header.dinky h1 {
+	font-family: Arvo, sans-serif;
+	font-size: 30px;
+	font-weight: 300;
+	line-height: 1.3em;
+	border-bottom: none;
+	margin-top: 0;
+}
+
+
+header.dinky h1, header.dinky a {
+	color: #fff;
+}
+
+header.dinky p a {
+	text-decoration: underline;
+}
+
+header.dinky a.name {
+	white-space: nowrap;
+}
+
+header.dinky ul {
+  list-style: none;
+  padding: 0;
+}
+
+header.dinky li {
+	list-style-type: none;
+  width: 132px;
+  height: 15px;
+	margin-bottom: 12px;
+	line-height: 1em;
+	padding: 6px 6px 6px 7px;
+
+	background: #AF0011;
+	background: -moz-linear-gradient(top, #AF0011 0%, #820011 100%);
+  background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#f8f8f8), color-stop(100%,#dddddd));
+  background: -webkit-linear-gradient(top, #AF0011 0%,#820011 100%);
+  background: -o-linear-gradient(top, #AF0011 0%,#820011 100%);
+  background: -ms-linear-gradient(top, #AF0011 0%,#820011 100%);
+  background: linear-gradient(top, #AF0011 0%,#820011 100%);
+
+	border-radius:4px;
+  border:1px solid #0D0D0D;
+
+	-webkit-box-shadow: inset 0px 1px 1px 0 rgba(233,2,38, 1);
+	box-shadow: inset 0px 1px 1px 0 rgba(233,2,38, 1);
+}
+
+header.dinky li:hover {
+	background: #C3001D;
+	background: -moz-linear-gradient(top, #C3001D 0%, #950119 100%);
+  background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#f8f8f8), color-stop(100%,#dddddd));
+  background: -webkit-linear-gradient(top, #C3001D 0%,#950119 100%);
+  background: -o-linear-gradient(top, #C3001D 0%,#950119 100%);
+  background: -ms-linear-gradient(top, #C3001D 0%,#950119 100%);
+  background: linear-gradient(top, #C3001D 0%,#950119 100%);
+}
+
+header.dinky a.buttons {
+	-webkit-font-smoothing: antialiased;
+	background: url(../img/icon-download.png) no-repeat;
+  display: block;
+  font-size: 14px;
+	font-weight: normal;
+	text-shadow: rgba(0, 0, 0, 0.4) 0 -1px 0;
+	padding: 2px 2px 2px 22px;
+  position: relative;
+  top: -2px;
+	height: 30px;
+}
+
+header.dinky a.github {
+	background: url(../img/icon-github.png) no-repeat;
+}
+
+header.dinky a.engine {
+	background: url(../img/icon-engine.png) no-repeat;
+}
+
+header.dinky a.index {
+	background: url(../img/icon-index.png) no-repeat;
+}
+
+header.dinky a.cards {
+	background: url(../img/icon-cards.png) no-repeat;
+}
+
+header.dinky a.screens {
+	background: url(../img/icon-screens.png) no-repeat;
+}
+
+header.dinky a.zip {
+	background: url(../img/icon-zip.png) no-repeat;
+}
+
+header.dinky a.buttons:hover {
+	color: #fff;
+	text-decoration: none;
+}
+
+span.card {
+  color:            black;
+  font-family:      "DejaVu Sans Condensed";
+  font-size:        1.5em;
+}
+span.card.diamonds { color: red; }
+span.card.hearts   { color: red; }
+
+/** Font supporting Unicode cards. */
+@font-face {
+  font-family: "DejaVu Sans Condensed";
+  src: url("../media/DejaVuSansCondensed.eot"); /* IE9 Compat Modes */
+  src: url("../media/DejaVuSansCondensed.eot?#iefix") format("embedded-opentype"), /* IE6-IE8 */
+       url("../media/DejaVuSansCondensed.otf")        format("opentype"), /* Open Type Font */
+       url("../media/DejaVuSansCondensed.svg")        format("svg"),      /* Legacy iOS */
+       url("../media/DejaVuSansCondensed.ttf")        format("truetype"), /* Safari, Android, iOS */
+       url("../media/DejaVuSansCondensed.woff")       format("woff"),     /* Modern Browsers */
+       url("../media/DejaVuSansCondensed.woff2")      format("woff2");    /* Modern Browsers */
+  font-weight: normal;
+  font-style:  normal;
+}
+
+
+
+/* Section - for main page content */
+section {
+  min-width: 650px;
+  margin-top: 20px;
+  margin-left: 300px;
+  padding-bottom: 50px;
+}
+
+
+/* Footer */
+footer {
+  width: 170px;
+  float: left;
+  position: fixed;
+  bottom: 10px;
+	padding-left: 50px;
+  font-size: 0.8em;
+}
+
+@media print, screen and (max-width: 960px) {
+
+  div.wrapper {
+    width: auto;
+    margin: 0;
+  }
+
+  header.dinky, section.dinky, footer.dinky {
+    float: none;
+    position: static;
+    width: auto;
+  }
+
+	footer.dinky {
+		border-top: 1px solid #ccc;
+		margin: 0 84px 0 50px;
+		padding: 0;
+	}
+
+  header.dinky {
+    padding-right: 320px;
+  }
+
+  section.dinky {
+    padding: 20px 84px 20px 50px;
+    margin: 0 0 20px;
+  }
+
+  header.dinky a small {
+    display: inline;
+  }
+
+  header.dinky ul {
+    position: absolute;
+    right: 130px;
+    top: 84px;
+  }
+}
+
+@media print, screen and (max-width: 720px) {
+  body {
+    word-wrap: break-word;
+  }
+
+  header.dinky {
+    padding: 10px 20px 0;
+		margin-right: 0;
+  }
+
+	section {
+    padding: 10px 0 10px 20px;
+    margin: 0 0 30px 0;
+  }
+
+	footer.dinky {
+		margin: 0 0 0 30px;
+	}
+
+  header.dinky ul {
+    position: static;
+  }
+}
+
+@media print, screen and (max-width: 480px) {
+
+	footer.dinky {
+		margin: 0 0 0 20px;
+	}
+
+	footer.dinky a {
+		display: block;
+	}
+
+  section {
+    margin-left: 0px;
+  }
+
+}
