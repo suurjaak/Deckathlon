@@ -74,7 +74,7 @@ Released under the MIT License.
 
 @author    Erki Suurjaak
 @created   19.04.2020
-@modified  23.05.2020
+@modified  23.09.2020
 ------------------------------------------------------------------------------
 """
 import collections
@@ -597,98 +597,91 @@ class Table(object):
 
         @return        (error, statuscode)
         """
-        error, status = None, httplib.OK
+        error, status = self.validate_action("start", data)
+        if error: return error, status
 
-        table, template, players, player = self.populate(template=True, players=True, player=True)
+        table, template, players, player = self.populate(
+            template=True, players=True, player=True
+        )
 
-        if self._userid != table["fk_host"]:
-            error, status = "Forbidden", httplib.FORBIDDEN
-        elif table["status"] not in ("new", "ended", "complete"):
-            error, status = "Game underway", httplib.CONFLICT
-        elif util.get(template, "opts", "players") \
-        and not in_range(len(players), template["opts"]["players"]):
-            error, status = "Not enough players", httplib.BAD_REQUEST
+        deck = make_deck(template)
+        dist = distribute_deck(template, players, deck)
+        logger.info("User '%s' started new game of %s on table #%s.",
+                    self._user["username"], template["name"], table["id"])
+
+        gamestatus = "bidding" if "bidding" in template["opts"] else "ongoing"
+        game = {"deck": deck, "sequence": table["games"] + 1,
+                "series": table["series"],
+                "status": gamestatus, "fk_table": table["id"],
+                "hands": {k: v for k, v in dist.items() if k != "talon"}}
+        if "talon" in dist: game["talon"] = game["talon0"] = dist["talon"]
+        if "trump" in dist: game["opts"]  = {"trump": suite(dist["trump"])}
+        if "lead"  in dist: game["trick"] = [{"stack": [dist["lead"]]}]
+        elif util.get(template, "opts", "stack"): game["trick"] = [{"stack": []}]
+            
+        expecteds = {} # {fk_player: {..}}
+        game0 = self._tx.fetchone("games", fk_table=table["id"],
+                                  sequence=table["games"], series=table["series"])
+
+        if game0 and game0["score"] and util.get(template, "opts", "nextgame", "distribute"):
+            # Game starts with players exchanging cards
+
+            game["status"] = "distributing"
+            if util.get(template, "opts", "nextgame", "distribute", "ranking"):
+
+                ranking = {int(k): v for k, v in game0["score"].items()}
+                playersx = sorted([x for x in players if x["id"] in ranking],
+                                  key=lambda x: ranking[x["id"]])
+                count = util.get(template, "opts", "nextgame", "distribute", "max")
+
+                for i, player1 in enumerate(playersx):
+                    if i >= len(playersx) / 2:
+                        break # for i, (..)
+                    player2 = playersx[-(i + 1)]
+                    pchanges1 = {"action": "distribute",
+                                 "distribute": {player2["id"]: count - i}}
+                    pchanges2 = {"action": "distribute",
+                                 "distribute": {player1["id"]: count - i}}
+                    expecteds[player1["id"]] = pchanges1
+                    expecteds[player2["id"]] = pchanges2
+
         else:
-            deck = make_deck(template)
-            dist = distribute_deck(template, players, deck)
-            logger.info("User '%s' started new game of %s on table #%s.",
-                        self._user["username"], template["name"], table["id"])
-
-            gamestatus = "bidding" if "bidding" in template["opts"] else "ongoing"
-            game = {"deck": deck, "sequence": table["games"] + 1,
-                    "series": table["series"],
-                    "status": gamestatus, "fk_table": table["id"],
-                    "hands": {k: v for k, v in dist.items() if k != "talon"}}
-            if "talon" in dist: game["talon"] = game["talon0"] = dist["talon"]
-            if "trump" in dist: game["opts"]  = {"trump": suite(dist["trump"])}
-            if "lead"  in dist: game["trick"] = [{"stack": [dist["lead"]]}]
-            elif util.get(template, "opts", "stack"): game["trick"] = [{"stack": []}]
-                
-
-            expecteds = {} # {fk_player: {..}}
-
-            game0 = self._tx.fetchone("games", fk_table=table["id"],
-                                      sequence=table["games"], series=table["series"])
-
-            if game0 and game0["score"] and util.get(template, "opts", "nextgame", "distribute"):
-                # Game starts with players exchanging cards
-
-                game["status"] = "distributing"
-                if util.get(template, "opts", "nextgame", "distribute", "ranking"):
-
-                    ranking = {int(k): v for k, v in game0["score"].items()}
-                    playersx = sorted([x for x in players if x["id"] in ranking],
-                                      key=lambda x: ranking[x["id"]])
-                    count = util.get(template, "opts", "nextgame", "distribute", "max")
-
-                    for i, player1 in enumerate(playersx):
-                        if i >= len(playersx) / 2:
-                            break # for i, (..)
-                        player2 = playersx[-(i + 1)]
-                        pchanges1 = {"action": "distribute",
-                                     "distribute": {player2["id"]: count - i}}
-                        pchanges2 = {"action": "distribute",
-                                     "distribute": {player1["id"]: count - i}}
-                        expecteds[player1["id"]] = pchanges1
-                        expecteds[player2["id"]] = pchanges2
-
+            # Set starting player, next from previous game's starting player
+            player0 = player
+            if game0:
+                player0id = None
+                if game0["bids"]: # Previous game's first bidder
+                    player0id = game0["bids"][0]["fk_player"]
+                elif game0["tricks"]: # Previous game's first mover
+                    player0id = next(y["fk_player"] for x in game0["tricks"]
+                                     for y in x if y.get("fk_player"))
+                if player0id:
+                    player0 = next((x for x in players if x["id"] == player0id), player0)
+            if game0 and not game0["score"]:
+                # Last game did not end properly: start with same player
+                game["fk_player"] = player0["id"]
             else:
-                # Set starting player, next from previous game's starting player
-                player0 = player
-                if game0:
-                    player0id = None
-                    if game0["bids"]: # Previous game's first bidder
-                        player0id = game0["bids"][0]["fk_player"]
-                    elif game0["tricks"]: # Previous game's first mover
-                        player0id = next(y["fk_player"] for x in game0["tricks"]
-                                         for y in x if y.get("fk_player"))
-                    if player0id:
-                        player0 = next((x for x in players if x["id"] == player0id), player0)
-                if game0 and not game0["score"]:
-                    # Last game did not end properly: start with same player
-                    game["fk_player"] = player0["id"]
-                else:
-                    # Start with next from host if first in series,
-                    # or next from last game's first player
-                    game["fk_player"] = players[(players.index(player0) + 1) % len(players)]["id"]
+                # Start with next from host if first in series,
+                # or next from last game's first player
+                game["fk_player"] = players[(players.index(player0) + 1) % len(players)]["id"]
 
 
-            game["id"] = self._tx.insert("games", game)
+        game["id"] = self._tx.insert("games", game)
 
-            for p in players:
-                pchanges = {"tricks": [], "moves": [], "fk_game": game["id"]}
-                pchanges["hand"] = pchanges["hand0"] = dist[p["id"]]
-                if util.get(template, "opts", "bidding", "blind"):
-                    pchanges["status"] = "blind"
+        for p in players:
+            pchanges = {"tricks": [], "moves": [], "fk_game": game["id"]}
+            pchanges["hand"] = pchanges["hand0"] = dist[p["id"]]
+            if util.get(template, "opts", "bidding", "blind"):
+                pchanges["status"] = "blind"
 
-                if p["id"] == game.get("fk_player"):
-                    pchanges["expected"] = get_expected_move(template, game, players, p)
-                elif p["id"] in expecteds:
-                    pchanges["expected"] = expecteds[p["id"]]
-                self._tx.update("players", pchanges, id=p["id"])
+            if p["id"] == game.get("fk_player"):
+                pchanges["expected"] = get_expected_move(template, game, players, p)
+            elif p["id"] in expecteds:
+                pchanges["expected"] = expecteds[p["id"]]
+            self._tx.update("players", pchanges, id=p["id"])
 
-            tchanges = {"status": "ongoing", "games": game["sequence"]}
-            self._tx.update("tables", tchanges, id=table["id"])
+        tchanges = {"status": "ongoing", "games": game["sequence"]}
+        self._tx.update("tables", tchanges, id=table["id"])
 
         return error, status
 
@@ -699,24 +692,21 @@ class Table(object):
 
         @return        (error, statuscode)
         """
-        error, status = None, httplib.OK
+        error, status = self.validate_action("end", data)
+        if error: return error, status
 
-        table, template, game, players = self.populate(template=True, game=True,
-                                                       players=True)
+        table, template, game, players = self.populate(
+            template=True, game=True, players=True
+        )
 
-        if self._userid != table["fk_host"]:
-            error, status = "Forbidden", httplib.FORBIDDEN
-        elif table["status"] in ("new", "ended", "complete"):
-            error, status = "Game not underway", httplib.CONFLICT
-        else:
-            gchanges = {"status": "ended", "fk_player": None}
-            tchanges = {"status": "ended"}
-            self._tx.update("games",  gchanges, id=game["id"])
-            self._tx.update("tables", tchanges, id=table["id"])
-            for p in players: self._tx.update("players", {"status": ""}, id=p["id"])
+        gchanges = {"status": "ended", "fk_player": None}
+        tchanges = {"status": "ended"}
+        self._tx.update("games",  gchanges, id=game["id"])
+        self._tx.update("tables", tchanges, id=table["id"])
+        for p in players: self._tx.update("players", {"status": ""}, id=p["id"])
 
-            logger.info("User '%s' ended a game of %s on table #%s.",
-                        self._user['username'], template["name"], table["id"])
+        logger.info("User '%s' ended a game of %s on table #%s.",
+                    self._user['username'], template["name"], table["id"])
 
         return error, status
 
@@ -769,534 +759,354 @@ class Table(object):
 
     def action_bid(self, data):
         """Carries out game bid action."""
-        error, status = None, httplib.OK
+        error, status = self.validate_action("bid", data)
+        if error: return error, status
 
         table, template, game, players, player = self.populate(
             template=True, game=True, players=True, player=True
         )
 
-        if "bidding" != game["status"]:
-            error, status = "Not in bidding phase", httplib.CONFLICT
-        elif game["fk_player"] != player["id"]:
-            error, status = "Not player's turn", httplib.FORBIDDEN
-        elif not data.get("data"):
-            error, status = "Bid missing data", httplib.BAD_REQUEST
-        else:
-            bid = {k: v for k, v in data["data"].items()
-                   if k in ("number", "pass", "suite", "blind")}
-            do_pass = data["data"].get("pass")
-            can_pass    = util.get(template, "opts", "bidding", "pass")
-            pass_final  = util.get(template, "opts", "bidding", "pass_final")
-            needs_suite = util.get(template, "opts", "bidding", "suite")
+        bid = {k: v for k, v in data["data"].items()
+               if k in ("number", "pass", "suite", "blind")}
+        pass_final  = util.get(template, "opts", "bidding", "pass_final")
 
-            if do_pass and not can_pass:
-                error, status = "Cannot pass", httplib.BAD_REQUEST
-            elif not do_pass and (not isinstance(bid.get("number"), (int, long)) \
-            or not do_pass and needs_suite \
-            and bid.get("suite") not in template["opts"]["bidding"]["suite"]):
-                error, status = "Bid missing data", httplib.BAD_REQUEST
 
-            elif not do_pass and bid_beyond_limit(template, game, player, bid, "min"):
-                error, status = "Bid too small", httplib.BAD_REQUEST
-            elif not do_pass and bid_beyond_limit(template, game, player, bid, "max"):
-                error, status = "Bid too high", httplib.BAD_REQUEST
-            elif not do_pass \
-            and util.get(template, "opts", "bidding", "step") is not None \
-            and bid["number"] % template["opts"]["bidding"]["step"]:
-                error, status = "Bid invalid number", httplib.BAD_REQUEST
-            elif bid.get("blind") and player["status"] != "blind":
-                error, status = "No longer blind", httplib.FORBIDDEN
+        gchanges = {"bids": game["bids"] + [dict(bid, fk_player=player["id"])]}
+        tchanges = {}
 
-            if not error and not do_pass and game["bids"]:
-                lastbid = next((x for x in game["bids"][::-1] if not x.get("pass")), None)
-                numbercmp = cmp(bid["number"], lastbid["number"]) if lastbid else 1
+        lastbids, winningbid = {}, {}
+        for bid0 in gchanges["bids"][::-1]:
+            if bid0["fk_player"] not in lastbids:
+                lastbids[bid0["fk_player"]] = bid0
+                if not bid0.get("pass"): winningbid = bid0
+                if bid0.get("sell") and game["opts"].get("sell"):
+                    break # for bid0
 
-                if numbercmp < 0:
-                    error, status = "Bid needs to be higher than previous", httplib.BAD_REQUEST
-                elif not numbercmp:
-                    if needs_suite:
-                        suites = template["opts"]["suites"]
-                        suitecmp = suites.index(bid["suite"]) - suites.index(lastbid["suite"])
-                        if suitecmp < 0:
-                            error, status = "Bid needs to be higher than previous", httplib.BAD_REQUEST
-                    else:
-                        error, status = "Bid needs to be higher than previous", httplib.BAD_REQUEST
+        if len(lastbids) == len(players) \
+        and all(x.get("pass") for x in lastbids.values()):
+            # All players have passed without a single bid: game over.
+            gchanges.update(fk_player=None, status="ended",
+                            opts={k: v for k, v in game["opts"].items() if k != "sell"})
+            tchanges.update(status="ended")
+            for p in players:
+                self._tx.update("players", {"status": "", "expected": {}}, id=p["id"])
 
-        if not error:
-            gchanges = {"bids": game["bids"] + [dict(bid, fk_player=player["id"])]}
-            tchanges = {}
+            logger.info("User '%s' ending a game of %s with no bidders on table #%s.",
+                        self._user['username'], template["name"], table["id"])
 
-            lastbids, winningbid = {}, {}
-            for bid0 in gchanges["bids"][::-1]:
-                if bid0["fk_player"] not in lastbids:
-                    lastbids[bid0["fk_player"]] = bid0
-                    if not bid0.get("pass"): winningbid = bid0
-                    if bid0.get("sell") and game["opts"].get("sell"):
-                        break # for bid0
+        elif len(lastbids) == len(players) \
+        and len([x for x in lastbids.values() if x.get("pass")]) == len(players) - 1:
+            # All players except one have passed: bidding complete.
 
-            if len(lastbids) == len(players) \
-            and all(x.get("pass") for x in lastbids.values()):
-                # All players have passed without a single bid: game over.
-                gchanges.update(fk_player=None, status="ended",
-                                opts={k: v for k, v in game["opts"].items() if k != "sell"})
-                tchanges.update(status="ended")
-                for p in players:
-                    self._tx.update("players", {"status": "", "expected": {}}, id=p["id"])
+            for p in players: # Clear blind status from all
+                self._tx.update("players", {"status": "", "expected": {}}, id=p["id"])
 
-                logger.info("Ending a game of %s with no bidders on table #%s.",
-                            self._user['username'], template["name"], table["id"])
+            gchanges["bid"] = next(x for x in gchanges["bids"][::-1] if not x.get("pass"))
+            gchanges["opts"] = {k: v for k, v in game["opts"].items() if k != "sell"}
 
-            elif len(lastbids) == len(players) \
-            and len([x for x in lastbids.values() if x.get("pass")]) == len(players) - 1:
-                # All players except one have passed: bidding complete.
+            if util.get(template["opts"], "bidding", "talon"):
+                # Bidding player wins talon
+                player2 = next(x for x in players if x["id"] == winningbid["fk_player"])
+                pchanges2 = {"hand": sort(template, player2["hand"] + game["talon"])}
+                gchanges.update(talon=[], status="ongoing", fk_player=player2["id"])
 
-                for p in players: # Clear blind status from all
-                    self._tx.update("players", {"status": "", "expected": {}}, id=p["id"])
+                if util.get(template["opts"], "bidding", "distribute"):
+                    gchanges["status"] = "distributing"
+                    pchanges2["expected"] = get_expected_move(template, dict(game, **gchanges), players, player2)
 
-                gchanges["bid"] = next(x for x in gchanges["bids"][::-1] if not x.get("pass"))
-                gchanges["opts"] = {k: v for k, v in game["opts"].items() if k != "sell"}
-
-                if util.get(template["opts"], "bidding", "talon"):
-                    # Bidding player wins talon
-                    player2 = next(x for x in players if x["id"] == winningbid["fk_player"])
-                    pchanges2 = {"hand": sort(template, player2["hand"] + game["talon"])}
-                    gchanges.update(talon=[], status="ongoing", fk_player=player2["id"])
-
-                    if util.get(template["opts"], "bidding", "distribute"):
-                        gchanges["status"] = "distributing"
-                        pchanges2["expected"] = get_expected_move(template, dict(game, **gchanges), players, player2)
-
-                    self._tx.update("players", pchanges2, id=player2["id"])
-                else:
-                    gchanges["fk_player"] = None
-                    if "bidder" == util.get(template["opts"], "lead", "0"):
-                        gchanges["fk_player"] = winningbid["fk_player"]
-                    gchanges["status"] = "ongoing"
-
-                logger.info("User '%s' won bid with %s in a game of %s on table #%s.",
-                            self._user['username'],
-                            {k: v for k, v in winningbid.items() if "fk_player" != k},
-                            template["name"], table["id"])
-
+                self._tx.update("players", pchanges2, id=player2["id"])
             else:
-                if pass_final and not game["opts"].get("sell"):
-                    player2 = players[(players.index(player) + 1) % len(players)]
-                    while player2["id"] in lastbids and lastbids[player2["id"]].get("pass"):
-                        player2 = players[(players.index(player2) + 1) % len(players)]
-                    gchanges["fk_player"] = player2["id"]
-                else:
-                    gchanges["fk_player"] = players[(players.index(player) + 1) % len(players)]["id"]
+                gchanges["fk_player"] = None
+                if "bidder" == util.get(template["opts"], "lead", "0"):
+                    gchanges["fk_player"] = winningbid["fk_player"]
+                gchanges["status"] = "ongoing"
 
-            self._tx.update("games", gchanges, id=game["id"])
-            if tchanges: self._tx.update("tables",  tchanges, id=table["id"])
+            logger.info("User '%s' won bid with %s in a game of %s on table #%s.",
+                        self._user['username'],
+                        {k: v for k, v in winningbid.items() if "fk_player" != k},
+                        template["name"], table["id"])
+
+        else:
+            if pass_final and not game["opts"].get("sell"):
+                player2 = players[(players.index(player) + 1) % len(players)]
+                while player2["id"] in lastbids and lastbids[player2["id"]].get("pass"):
+                    player2 = players[(players.index(player2) + 1) % len(players)]
+                gchanges["fk_player"] = player2["id"]
+            else:
+                gchanges["fk_player"] = players[(players.index(player) + 1) % len(players)]["id"]
+
+        self._tx.update("games", gchanges, id=game["id"])
+        if tchanges: self._tx.update("tables",  tchanges, id=table["id"])
 
         return error, status
 
 
     def action_sell(self, data=None):
         """Carries out game sell action."""
-        error, status = None, httplib.OK
+        error, status = self.validate_action("sell", data)
+        if error: return error, status
 
         table, template, game, players, player = self.populate(
             template=True, game=True, players=True, player=True
         )
 
-        if "distributing" != game["status"]:
-            error, status = "Not in distributing phase", httplib.CONFLICT
-        elif game["fk_player"] != player["id"]:
-            error, status = "Not player's turn", httplib.FORBIDDEN
-        elif not util.get(template, "opts", "bidding", "sell"):
-            error, status = "Unknown action", httplib.BAD_REQUEST
-        elif any(x.get("sell") for x in game["bids"]):
-            error, status = "Forbidden", httplib.FORBIDDEN
-        else:
-            bid = {k: v for k, v in dict(game["bid"], sell=True).items() if k != "blind"}
-            pchanges = {"expected": {}, "hand": player["hand0"], "status": ""}
-            gchanges = {"talon": game["talon0"], "status": "bidding", "bid": {},
-                        "fk_player": players[(players.index(player) + 1) % len(players)]["id"],
-                        "bids": game["bids"] + [bid], "opts": dict(game["opts"], sell=True)}
+        bid = {k: v for k, v in dict(game["bid"], sell=True).items() if k != "blind"}
+        pchanges = {"expected": {}, "hand": player["hand0"], "status": ""}
+        gchanges = {"talon": game["talon0"], "status": "bidding", "bid": {},
+                    "fk_player": players[(players.index(player) + 1) % len(players)]["id"],
+                    "bids": game["bids"] + [bid], "opts": dict(game["opts"], sell=True)}
 
-            self._tx.update("players", pchanges, id=player["id"])
-            self._tx.update("games",   gchanges, id=game["id"])
+        self._tx.update("players", pchanges, id=player["id"])
+        self._tx.update("games",   gchanges, id=game["id"])
 
-            logger.info("User '%s' is selling bid %s in a game of %s on table #%s.",
-                        self._user['username'],
-                        {k: v for k, v in bid.items() if "sell" != k},
-                        template["name"], table["id"])
+        logger.info("User '%s' is selling bid %s in a game of %s on table #%s.",
+                    self._user['username'],
+                    {k: v for k, v in bid.items() if "sell" != k},
+                    template["name"], table["id"])
 
         return error, status
 
 
     def action_redeal(self, data=None):
         """Carries out game redeal action."""
-        error, status = None, httplib.OK
+        error, status = self.validate_action("redeal", data)
+        if error: return error, status
 
         table, template, game, players, player = self.populate(
             template=True, game=True, players=True, player=True
         )
         copts = util.get(template, "opts", "redeal", "condition")
 
-        if "bidding" != game["status"]:
-            error, status = "Not in bidding phase", httplib.CONFLICT
-        elif game["fk_player"] != player["id"]:
-            error, status = "Not player's turn", httplib.FORBIDDEN
-        elif not util.get(template, "opts", "redeal"):
-            error, status = "Unknown action", httplib.BAD_REQUEST
-        elif any(x.get("fk_player") == player["id"] for x in game["bids"]):
-            error, status = "Forbidden", httplib.FORBIDDEN
-        elif len(set(copts.get("hand", [])) & set(player["hand"])) < copts.get("min", sys.maxint):
-            error, status = "Forbidden", httplib.FORBIDDEN
+        pchanges = {"expected": {}, "status": ""}
+        gchanges = {"status": "ended", "fk_player": None,
+                    "bids": game["bids"] + [{"fk_player": player["id"], "redeal": True}],
+                    "opts": dict(game["opts"], redeal=True)}
 
-        else:
-            pchanges = {"expected": {}, "status": ""}
-            gchanges = {"status": "ended", "fk_player": None,
-                        "bids": game["bids"] + [{"fk_player": player["id"], "redeal": True}],
-                        "opts": dict(game["opts"], redeal=True)}
+        for p in players: self._tx.update("players", pchanges, id=p["id"])
+        self._tx.update("games",  gchanges, id=game["id"])
+        self._tx.update("tables", {"status": "ended"}, id=table["id"])
 
-            for p in players: self._tx.update("players", pchanges, id=p["id"])
-            self._tx.update("games",  gchanges, id=game["id"])
-            self._tx.update("tables", {"status": "ended"}, id=table["id"])
-
-            logger.info("User '%s' triggered redeal with %s in a game of %s on table #%s.",
-                        self._user['username'],
-                        list(set(copts.get("hand", [])) & set(player["hand"])),
-                        template["name"], table["id"])
+        logger.info("User '%s' triggered redeal with %s in a game of %s on table #%s.",
+                    self._user['username'],
+                    list(set(copts.get("hand", [])) & set(player["hand"])),
+                    template["name"], table["id"])
 
         return error, status
 
 
     def action_distribute(self, data):
         """Carries out game distribution action after bidding."""
-        error, status = None, httplib.OK
+        error, status = self.validate_action("distribute", data)
+        if error: return error, status
 
         table, template, game, players, player = self.populate(
             template=True, game=True, players=True, player=True
         )
 
-        if "distributing" != game["status"]:
-            error, status = "Not in distributing phase", httplib.CONFLICT
-        elif not util.get(player, "expected", "distribute"):
-            error, status = "Not in distributing phase", httplib.FORBIDDEN
-        elif not data.get("data"):
-            error, status = "Distribution missing data", httplib.BAD_REQUEST
-        elif game["fk_player"] != player["id"] \
-        and not util.get(template, "opts", "nextgame", "distribute"):
-            error, status = "Not player's turn", httplib.FORBIDDEN
-        else:
-            dist = {int(k): sort(template, v) for k, v in data["data"].items()}
-            expecteds = {int(k): v for k, v in player["expected"]["distribute"].items()}
-            allgiven  = sort(template, [x for xx in dist.values() for x in xx])
+        dist = {int(k): sort(template, v) for k, v in data["data"].items()}
+        allgiven  = sort(template, [x for xx in dist.values() for x in xx])
 
-            if set(dist) - set(util.unwrap(players, "id")) \
-            or set(dist) - set(expecteds):
-                error, status = "Unknown players", httplib.BAD_REQUEST
-            elif len(drop(player["hand"], allgiven)) > len(player["hand"]) - len(allgiven):
-                error, status = "No such cards", httplib.BAD_REQUEST
-            for fk_player, count in () if error else expecteds.items():
-                if count != len(dist.get(fk_player) or []):
-                    error, status = "Wrong amount being distributed", httplib.BAD_REQUEST
-                    break # for fk_player
-
-
-        if not error and util.get(template, "opts", "nextgame", "distribute", "ranking"):
+        if util.get(template, "opts", "nextgame", "distribute", "ranking"):
 
             game0 = self._tx.fetchone("games", fk_table=table["id"],
                                       sequence=table["games"] - 1, series=table["series"])
             ranking = {int(k): v for k, v in game0["score"].items()}
             playersx = sorted([x for x in players if x["id"] in ranking],
                               key=lambda x: ranking[x["id"]])
-            if ranking[player["id"]] > len(playersx) / 2:
-                # The lower half of ranking needs to give top cards
-                phand = drop(player["hand"], allgiven)
-                if cmp_cards(template, phand[0], allgiven[-1]) > 0:
-                    error, status = "Must give top cards", httplib.BAD_REQUEST
 
-        if not error:
-            gchanges = {}
-            pchanges = {"expected": {}, "status": ""}
+        gchanges = {}
+        pchanges = {"expected": {}, "status": ""}
 
-            if util.get(template, "opts", "nextgame", "distribute"):
-                # Multiple players distributing at once
+        if util.get(template, "opts", "nextgame", "distribute"):
+            # Multiple players distributing at once
 
-                move = next({"cards": cc, "fk_player2": pid}
-                            for pid, cc in dist.items())
-                gmove = dict(move, fk_player=player["id"])
+            move = next({"cards": cc, "fk_player2": pid}
+                        for pid, cc in dist.items())
+            gmove = dict(move, fk_player=player["id"])
 
-                pchanges["moves"] = copy.deepcopy(player["moves"])
-                gchanges["moves"] = copy.deepcopy(game["moves"])
-                if not player["moves"]: pchanges["moves"].append([])
-                if not game["moves"]:   gchanges["moves"].append([])
-                pchanges["moves"][-1].append(move)
-                gchanges["moves"][-1].append(gmove)
-                pchanges["hand"] = drop(player["hand"], allgiven)
+            pchanges["moves"] = copy.deepcopy(player["moves"])
+            gchanges["moves"] = copy.deepcopy(game["moves"])
+            if not player["moves"]: pchanges["moves"].append([])
+            if not game["moves"]:   gchanges["moves"].append([])
+            pchanges["moves"][-1].append(move)
+            gchanges["moves"][-1].append(gmove)
+            pchanges["hand"] = drop(player["hand"], allgiven)
 
-                self._tx.update("players", pchanges, id=player["id"])
-                player.update(pchanges)
+            self._tx.update("players", pchanges, id=player["id"])
+            player.update(pchanges)
 
-                if not any(util.get(x, "expected", "distribute") for x in players):
-                    # All players have distributed who were expected to
-                    players = self._tx.fetchall("players", fk_table=table["id"],
-                                                dt_deleted=None, order="sequence")
-                    for pmove in gchanges["moves"][-1]:
-                        # Update receiving player hands
-                        player2 = next(x for x in players if x["id"] == pmove["fk_player2"])
-                        pchanges2 = {"hand": sort(template, player2["hand"] + pmove["cards"])}
-                        self._tx.update("players", pchanges2, id=player2["id"])
-
-                    if util.get(template, "opts", "lead", "0", "ranking") is not None:
-                        player2 = playersx[util.get(template, "opts", "lead", "0", "ranking")]
-                        gchanges["fk_player"] = player2["id"]
-                    else:
-                        player0id = next(y["fk_player"] for x in game0["tricks"]
-                                         for y in x if y.get("fk_player"))
-                        player0 = next(x for x in players if x["id"] == player0id)
-                        player2 = next_player_in_game(template, game, players, player0)
-                        gchanges["fk_player"] = player2["id"]
-
-                    gchanges["status"] = "ongoing"
-                    pchanges2 = {"expected": get_expected_move(template, dict(game, **gchanges), players, player)}
-                    self._tx.update("players", pchanges2, id=gchanges["fk_player"])
-
-                self._tx.update("games", gchanges, id=game["id"])
-
-
-            else:
-                # Single player making distributing move
-                gchanges = {"status": "ongoing"}
-                pchanges = {"expected": {}}
-
-                for fk_player, cards in dist.items():
-                    player2 = next(x for x in players if x["id"] == fk_player)
-                    pchanges2 = {"hand": sort(template, player2["hand"] + cards)}
+            if not any(util.get(x, "expected", "distribute") for x in players):
+                # All players have distributed who were expected to
+                players = self._tx.fetchall("players", fk_table=table["id"],
+                                            dt_deleted=None, order="sequence")
+                for pmove in gchanges["moves"][-1]:
+                    # Update receiving player hands
+                    player2 = next(x for x in players if x["id"] == pmove["fk_player2"])
+                    pchanges2 = {"hand": sort(template, player2["hand"] + pmove["cards"])}
                     self._tx.update("players", pchanges2, id=player2["id"])
 
-                pchanges["expected"] = get_expected_move(template, dict(game, **gchanges), players, player)
-                pchanges["hand"] = drop(player["hand"], allgiven)
+                if util.get(template, "opts", "lead", "0", "ranking") is not None:
+                    player2 = playersx[util.get(template, "opts", "lead", "0", "ranking")]
+                    gchanges["fk_player"] = player2["id"]
+                else:
+                    player0id = next(y["fk_player"] for x in game0["tricks"]
+                                     for y in x if y.get("fk_player"))
+                    player0 = next(x for x in players if x["id"] == player0id)
+                    player2 = next_player_in_game(template, game, players, player0)
+                    gchanges["fk_player"] = player2["id"]
 
-                self._tx.update("games",   gchanges, id=game["id"])
-                self._tx.update("players", pchanges, id=player["id"])
+                gchanges["status"] = "ongoing"
+                pchanges2 = {"expected": get_expected_move(template, dict(game, **gchanges), players, player)}
+                self._tx.update("players", pchanges2, id=gchanges["fk_player"])
+
+            self._tx.update("games", gchanges, id=game["id"])
+
+
+        else:
+            # Single player making distributing move
+            gchanges = {"status": "ongoing"}
+            pchanges = {"expected": {}}
+
+            for fk_player, cards in dist.items():
+                player2 = next(x for x in players if x["id"] == fk_player)
+                pchanges2 = {"hand": sort(template, player2["hand"] + cards)}
+                self._tx.update("players", pchanges2, id=player2["id"])
+
+            pchanges["expected"] = get_expected_move(template, dict(game, **gchanges), players, player)
+            pchanges["hand"] = drop(player["hand"], allgiven)
+
+            self._tx.update("games",   gchanges, id=game["id"])
+            self._tx.update("players", pchanges, id=player["id"])
 
         return error, status
 
 
     def action_move(self, data):
         """Carries out game move action."""
-        error, status = None, httplib.OK
+        error, status = self.validate_action("move", data)
+        if error: return error, status
 
         table, template, game, players, player = self.populate(
             template=True, game=True, players=True, player=True
         )
 
-        if "ongoing" != game["status"]:
-            error, status = "Game not underway", httplib.CONFLICT
-        elif game["fk_player"] != player["id"]:
-            error, status = "Not player's turn", httplib.FORBIDDEN
-        elif not data.get("data"):
-            error, status = "Move missing data", httplib.BAD_REQUEST
-        else:
-            cards = data["data"].get("cards") or []
-            do_pass, do_crawl, do_trump = (data["data"].get(x) for x in 
-                                          ("pass", "crawl", "trump"))
-            do_special = next((x for x in util.get(template, "opts", "move", "special") or {}
-                               if x != "trump" and data["data"].get(x)), None)
-            should_extra = next(({k: v["cards"]}
-                for k, v in (util.get(template, "opts", "move", "response") or {}).items()
-                if k not in ("amount", "level", "suite") and isinstance(v, dict)
-                and v.get("cards")
-            ), None)
-            do_extra = should_extra and data["data"].get(should_extra.keys()[0])
+        cards = data["data"].get("cards") or []
+        do_pass, do_crawl, do_trump = (data["data"].get(x) for x in 
+                                      ("pass", "crawl", "trump"))
+        do_special = next((x for x in util.get(template, "opts", "move", "special") or {}
+                           if x != "trump" and data["data"].get(x)), None)
+        should_extra = next(({k: v["cards"]}
+            for k, v in (util.get(template, "opts", "move", "response") or {}).items()
+            if k not in ("amount", "level", "suite") and isinstance(v, dict)
+            and v.get("cards")
+        ), None)
+        do_extra = should_extra and data["data"].get(should_extra.keys()[0])
 
-            if do_pass and not util.get(template, "opts", "move", "pass"):
-                error, status = "Cannot pass", httplib.BAD_REQUEST
-            elif do_pass and not game["trick"]:
-                error, status = "Cannot pass", httplib.BAD_REQUEST
-            elif do_crawl and util.get(template, "opts", "move", "crawl") is None:
-                error, status = "Cannot crawl", httplib.BAD_REQUEST
-            elif not cards and not do_pass:
-                error, status = "Not the right amount of cards", httplib.BAD_REQUEST
-            elif do_pass and (cards or do_extra):
-                error, status = "Unknown action", httplib.BAD_REQUEST
-            elif len(drop(player["hand"], cards)) > len(player["hand"]) - len(cards):
-                error, status = "No such cards", httplib.BAD_REQUEST
-            elif not has_move_expected_amount(template, cards):
-                error, status = "Not the right amount of cards", httplib.FORBIDDEN
-            elif do_crawl and isinstance(util.get(template, "opts", "move", "crawl"), (int, long)) \
-            and util.get(template, "opts", "move", "crawl") != len(game["tricks"]):
-                error, status = "Cannot make crawl move this round", httplib.FORBIDDEN
-            elif do_crawl and set(map(level, template["opts"]["cards"][-4])) & set(map(level, player["hand"])):
-                error, status = "Cannot crawl if you have a top card", httplib.FORBIDDEN
+        do_crawl = do_crawl or any(x.get("crawl") for x in game["trick"])
+        pchanges = {"expected": {}, "hand": drop(player["hand"], cards)}
+        player2, player3, gchanges, tchanges, pchanges2, pchanges3 = None, None, {}, {}, {}, {}
 
-            elif do_trump and not util.get(template, "opts", "move", "special", "trump"):
-                error, status = "Cannot make trump in game", httplib.FORBIDDEN
-            elif do_trump and util.get(template, "opts", "move", "special", "trump", len(game["tricks"])) == False:
-                error, status = "Cannot make trump this round", httplib.FORBIDDEN
-            elif do_trump and util.get(template, "opts", "move", "special", "trump", "condition", "min") \
-            and len(player["hand"]) < util.get(template, "opts", "move", "special", "trump", "condition", "min"):
-                error, status = "Cannot make trump: not enough cards", httplib.FORBIDDEN
-            elif do_trump and not any(len(set(player["hand"]) & set(cc)) == len(cc)
-                                      for cc in util.get(template, "opts", "move", "special", "trump", "*")):
-                error, status = "No cards to make trump", httplib.FORBIDDEN
-            elif do_trump and not (set(cards) & set(
-                c for cc in util.get(template, "opts", "move", "special", "trump", "*")
-                if len(set(player["hand"]) & set(cc)) == len(cc) for c in cc
-            )):
-                error, status = "Not trump card", httplib.FORBIDDEN
+        move = {}
+        if cards: move["cards"] = cards
+        if do_trump:
+            move["trump"] = True
+            gchanges["opts"] = dict(game["opts"], trump=suite(cards[0]))
+        if do_special:
+            move[do_special] = True
+        if do_crawl:
+            move["crawl"] = True
+        if do_pass:
+            move["pass"] = True
+        if do_extra:
+            move[should_extra.keys()[0]] = do_extra
+            pchanges["hand"] = drop(pchanges["hand"], do_extra)
+        gmove = dict(move, fk_player=player["id"])
 
-            elif do_special and util.get(template, "opts", "move", "special", do_special) is None:
-                error, status = "Cannot make {0}".format(do_special), httplib.BAD_REQUEST
-            elif do_special and util.get(template, "opts", "move", "special", do_special, len(game["tricks"])) == False:
-                error, status = "Cannot make {0} this round".format(do_special), httplib.BAD_REQUEST
-            elif do_special and not any(len(set(player["hand"]) & set(cc)) == len(cc)
-                                      for cc in util.get(template, "opts", "move", "special", do_special, "*")):
-                error, status = "No cards to make {0}".format(do_special), httplib.FORBIDDEN
-            elif do_special and not (set(cards) & set(
-                c for cc in util.get(template, "opts", "move", "special", do_special, "*")
-                if len(set(player["hand"]) & set(cc)) == len(cc) for c in cc
-            )):
-                error, status = "Not {0} card".format(do_special), httplib.FORBIDDEN
-            elif do_special and util.get(template, "opts", "move", "special", do_special, "condition") is not None \
-            and not util.get(game, "opts", util.get(template, "opts", "move", "special", do_special, "condition", "opt")):
-                error, status = "Not meeting {0} condition: {1}".format(do_special, util.get(template, "opts", "move", "special", do_special, "condition", "opt")), httplib.FORBIDDEN
-            elif do_special and util.get(template, "opts", "move", "special", do_special, "condition", "suite") \
-            and util.get(game, "opts", util.get(template, "opts", "move", "special", do_special, "condition", "opt")) != suite(cards[0]):
-                error, status = "Not meeting {0} condition: {1}".format(do_special, util.get(template, "opts", "move", "special", do_special, "condition", "opt")), httplib.FORBIDDEN
+        pchanges["moves"] = copy.deepcopy(player["moves"])
+        if not pchanges["moves"] or util.get(template, "opts", "move", "win") \
+        and not any(x.get("fk_player") == player["id"] for x in game["trick"]):
+            pchanges["moves"].append([])
+        pchanges["moves"][-1].append(move)
 
+        gchanges["moves"] = copy.deepcopy(game["moves"])
+        gchanges["trick"] = copy.deepcopy(game["trick"])
+        if not gchanges["moves"] \
+        or util.get(template, "opts", "move", "win") and not game["trick"]:
+            gchanges["moves"].append([])
+        gchanges["moves"][-1].append(gmove)
+        gchanges["trick"].append(gmove)
 
-        if not error:
+        if util.get(game, "trick", 0, "stack") is not None:
+            gchanges["trick"][0]["stack"].append(cards[:])
+            if do_extra: gchanges["trick"][0]["stack"][-1].extend(do_extra)
 
-            if cards and util.get(template, "opts", "move", "suite") and len(set(map(suite, cards))) != 1:
-                error, status = "Must play cards of one suite", httplib.BAD_REQUEST
-            elif cards and util.get(template, "opts", "move", "level") and len(set(map(level, cards))) != 1:
-                error, status = "Must play cards of one level", httplib.BAD_REQUEST
-            elif not do_pass and not has_move_right_suite(template, game, player, cards):
-                error, status = "Must follow suite", httplib.BAD_REQUEST
-            elif not do_pass and not has_move_right_level(template, game, cards):
-                error, status = "Must play at least same level", httplib.BAD_REQUEST
-            elif not do_pass and not has_move_right_amount(template, game, cards):
-                error, status = "Must play at least same amount", httplib.BAD_REQUEST
-
-        if not error:
-
-            if should_extra and not do_extra and len(player["hand"]) - len(cards):
-                error, status = "Must %s" % should_extra.keys()[0], httplib.BAD_REQUEST
-            elif should_extra and do_extra is not None and not isinstance(do_extra, list):
-                error, status = "Unknown action", httplib.BAD_REQUEST
-            elif should_extra and do_extra is not None \
-            and not set(drop(player["hand"], cards)) & set(do_extra):
-                error, status = "No such cards", httplib.BAD_REQUEST
-            elif should_extra and do_extra and not last_cards(template, game):
-                error, status = "No need to %s" % should_extra, httplib.BAD_REQUEST
-            elif should_extra and do_extra \
-            and isinstance(should_extra.values()[0], (int, long)) \
-            and len(do_extra) != should_extra.values()[0]:
-                error, status = "Not the right amount of cards", httplib.BAD_REQUEST
-
-        if not error:
-            do_crawl = do_crawl or any(x.get("crawl") for x in game["trick"])
-            pchanges = {"expected": {}, "hand": drop(player["hand"], cards)}
-            player2, player3, gchanges, tchanges, pchanges2, pchanges3 = None, None, {}, {}, {}, {}
-
-            move = {}
-            if cards: move["cards"] = cards
-            if do_trump:
-                move["trump"] = True
-                gchanges["opts"] = dict(game["opts"], trump=suite(cards[0]))
-            if do_special:
-                move[do_special] = True
-            if do_crawl:
-                move["crawl"] = True
-            if do_pass:
-                move["pass"] = True
-            if do_extra:
-                move[should_extra.keys()[0]] = do_extra
-                pchanges["hand"] = drop(pchanges["hand"], do_extra)
-            gmove = dict(move, fk_player=player["id"])
-
-            pchanges["moves"] = copy.deepcopy(player["moves"])
-            if not pchanges["moves"] or util.get(template, "opts", "move", "win") \
-            and not any(x.get("fk_player") == player["id"] for x in game["trick"]):
-                pchanges["moves"].append([])
-            pchanges["moves"][-1].append(move)
-
-            gchanges["moves"] = copy.deepcopy(game["moves"])
-            gchanges["trick"] = copy.deepcopy(game["trick"])
-            if not gchanges["moves"] \
-            or util.get(template, "opts", "move", "win") and not game["trick"]:
-                gchanges["moves"].append([])
-            gchanges["moves"][-1].append(gmove)
-            gchanges["trick"].append(gmove)
-
-            if util.get(game, "trick", 0, "stack") is not None:
-                gchanges["trick"][0]["stack"].append(cards[:])
-                if do_extra: gchanges["trick"][0]["stack"][-1].extend(do_extra)
-
-            if util.get(template, "opts", "refill") \
-            and not util.get(template, "opts", "move", "win"):
-                if game["talon"] \
-                and len(pchanges["hand"]) < util.get(template, "opts", "hand", default=0):
-                    refill = game["talon"][-(util.get(template, "opts", "hand") - len(pchanges["hand"])):]
-                    gchanges["talon"] = game["talon"][:-len(refill)]
-                    pchanges["hand0"] = pchanges["hand"]
-                    pchanges["hand"] = sort(template, pchanges["hand"] + refill)
-                else:
-                    pchanges["hand0"] = pchanges["hand"]
-
-            player.update(pchanges)
-            playerids_ingame = set(x["id"] for x in players if x["hand"])
-            playerids_passed = set(x["fk_player"] for x in gchanges["trick"] if x.get("pass") and x.get("fk_player"))
-            playerid_lastmove = next((x["fk_player"] for x in gchanges["trick"][::-1]
-                                      if not x.get("pass") and x.get("fk_player")), None)
-
-            round_over = game_over = False
-            if util.get(template, "opts", "trick") and len(gchanges["trick"]) == len(players):
-                # All players have participated in trick
-                round_over = True
-            elif cards and util.get(template, "opts", "move", "win") \
-            and "all" == util.get(template, "opts", "move", "win", "level") \
-            and has_allofakind(template, gchanges["trick"]):
-                # Trick ends with all of a kind
-                round_over = True
-            elif not util.get(template, "opts", "trick") \
-            and util.get(template, "opts", "move", "win", "last") \
-            and len(playerids_ingame - playerids_passed - set([playerid_lastmove])) < 1:
-                # All except one have passed or played their last
-                round_over = True
-
-            if round_over and len(playerids_ingame) < 2:
-                # Only one or zero players have any cards left
-                game_over = True
-
-            if round_over:
-                player2 = round_winner(template, dict(game, **gchanges), players, gchanges["trick"])
-                if util.get(template, "opts", "trick"):
-                    pchanges2["tricks"] = copy.deepcopy(player2["tricks"]) + [gchanges["trick"]]
-
-                gchanges["discards"] = copy.deepcopy(game["discards"]) + [gchanges["trick"]]
-                gchanges["tricks"] = copy.deepcopy(game["tricks"]) + [gchanges["trick"]]
-                gchanges["trick"] = []
-
-                if not game_over and "trick" == util.get(template["opts"], "lead", "*"):
-                    player3 = player2
-                    if not player3["hand"]:
-                        player3 = next_player_in_game(template, dict(game, **gchanges), players, player2)
-                        pchanges3["expected"] = get_expected_move(template, dict(game, **gchanges), players, player3)
-                        gchanges["fk_player"] = player3["id"]
-                    else:
-                        pchanges2["expected"] = get_expected_move(template, dict(game, **gchanges), players, player2)
-                        gchanges["fk_player"] = player2["id"]
+        if util.get(template, "opts", "refill") \
+        and not util.get(template, "opts", "move", "win"):
+            if game["talon"] \
+            and len(pchanges["hand"]) < util.get(template, "opts", "hand", default=0):
+                refill = game["talon"][-(util.get(template, "opts", "hand") - len(pchanges["hand"])):]
+                gchanges["talon"] = game["talon"][:-len(refill)]
+                pchanges["hand0"] = pchanges["hand"]
+                pchanges["hand"] = sort(template, pchanges["hand"] + refill)
             else:
-                player2 = next_player_in_round(template, dict(game, **gchanges), players, player)
-                if player2:
-                    gchanges["fk_player"] = player2["id"]
-                    pchanges2["expected"] = get_expected_move(template, dict(game, **gchanges), players, player2)
-                else: game_over = True
+                pchanges["hand0"] = pchanges["hand"]
 
-            self._tx.update("games",   gchanges, id=game["id"])
-            self._tx.update("players", pchanges, id=player["id"])
-            if pchanges2: self._tx.update("players", pchanges2, id=player2["id"])
-            if pchanges3: self._tx.update("players", pchanges3, id=player3["id"])
-            if tchanges:  self._tx.update("tables",  tchanges,  id=table["id"])
-            if game_over: self.end_game()
+        player.update(pchanges)
+        playerids_ingame = set(x["id"] for x in players if x["hand"])
+        playerids_passed = set(x["fk_player"] for x in gchanges["trick"] if x.get("pass") and x.get("fk_player"))
+        playerid_lastmove = next((x["fk_player"] for x in gchanges["trick"][::-1]
+                                  if not x.get("pass") and x.get("fk_player")), None)
+
+        round_over = game_over = False
+        if util.get(template, "opts", "trick") and len(gchanges["trick"]) == len(players):
+            # All players have participated in trick
+            round_over = True
+        elif cards and util.get(template, "opts", "move", "win") \
+        and "all" == util.get(template, "opts", "move", "win", "level") \
+        and has_allofakind(template, gchanges["trick"]):
+            # Trick ends with all of a kind
+            round_over = True
+        elif not util.get(template, "opts", "trick") \
+        and util.get(template, "opts", "move", "win", "last") \
+        and len(playerids_ingame - playerids_passed - set([playerid_lastmove])) < 1:
+            # All except one have passed or played their last
+            round_over = True
+
+        if round_over and len(playerids_ingame) < 2:
+            # Only one or zero players have any cards left
+            game_over = True
+
+        if round_over:
+            player2 = round_winner(template, dict(game, **gchanges), players, gchanges["trick"])
+            if util.get(template, "opts", "trick"):
+                pchanges2["tricks"] = copy.deepcopy(player2["tricks"]) + [gchanges["trick"]]
+
+            gchanges["discards"] = copy.deepcopy(game["discards"]) + [gchanges["trick"]]
+            gchanges["tricks"] = copy.deepcopy(game["tricks"]) + [gchanges["trick"]]
+            gchanges["trick"] = []
+
+            if not game_over and "trick" == util.get(template["opts"], "lead", "*"):
+                player3 = player2
+                if not player3["hand"]:
+                    player3 = next_player_in_game(template, dict(game, **gchanges), players, player2)
+                    pchanges3["expected"] = get_expected_move(template, dict(game, **gchanges), players, player3)
+                    gchanges["fk_player"] = player3["id"]
+                else:
+                    pchanges2["expected"] = get_expected_move(template, dict(game, **gchanges), players, player2)
+                    gchanges["fk_player"] = player2["id"]
+        else:
+            player2 = next_player_in_round(template, dict(game, **gchanges), players, player)
+            if player2:
+                gchanges["fk_player"] = player2["id"]
+                pchanges2["expected"] = get_expected_move(template, dict(game, **gchanges), players, player2)
+            else: game_over = True
+
+        self._tx.update("games",   gchanges, id=game["id"])
+        self._tx.update("players", pchanges, id=player["id"])
+        if pchanges2: self._tx.update("players", pchanges2, id=player2["id"])
+        if pchanges3: self._tx.update("players", pchanges3, id=player3["id"])
+        if tchanges:  self._tx.update("tables",  tchanges,  id=table["id"])
+        if game_over: self.end_game()
 
         return error, status
 
@@ -1397,6 +1207,258 @@ class Table(object):
         self._tx.update("tables",  tchanges, id=table["id"])
         for p in players:
             self._tx.update("players", {"dt_changed": util.utcnow()}, id=p["id"])
+
+
+
+    def validate_action(self, action, data):
+        """Validates game move action, returns (error string or None, HTTP code)."""
+        error, status = None, httplib.OK
+
+        table, template, game, players, player = self.populate(
+            template=True, game=True, players=True, player=True
+        )
+
+
+        if "start" == action:
+
+            if self._userid != table["fk_host"]:
+                error, status = "Forbidden", httplib.FORBIDDEN
+            elif table["status"] not in ("new", "ended", "complete"):
+                error, status = "Game underway", httplib.CONFLICT
+            elif util.get(template, "opts", "players") \
+            and not in_range(len(players), template["opts"]["players"]):
+                error, status = "Not enough players", httplib.BAD_REQUEST
+
+
+        if "end" == action:
+            if self._userid != table["fk_host"]:
+                error, status = "Forbidden", httplib.FORBIDDEN
+            elif table["status"] in ("new", "ended", "complete"):
+                error, status = "Game not underway", httplib.CONFLICT
+
+
+        if "bid" == action:
+
+            if "bidding" != game["status"]:
+                error, status = "Not in bidding phase", httplib.CONFLICT
+            elif game["fk_player"] != player["id"]:
+                error, status = "Not player's turn", httplib.FORBIDDEN
+            elif not data.get("data"):
+                error, status = "Bid missing data", httplib.BAD_REQUEST
+            else:
+                bid = {k: v for k, v in data["data"].items()
+                       if k in ("number", "pass", "suite", "blind")}
+                do_pass = data["data"].get("pass")
+                can_pass    = util.get(template, "opts", "bidding", "pass")
+                needs_suite = util.get(template, "opts", "bidding", "suite")
+
+                if do_pass and not can_pass:
+                    error, status = "Cannot pass", httplib.BAD_REQUEST
+                elif not do_pass and (not isinstance(bid.get("number"), (int, long)) \
+                or not do_pass and needs_suite \
+                and bid.get("suite") not in template["opts"]["bidding"]["suite"]):
+                    error, status = "Bid missing data", httplib.BAD_REQUEST
+
+                elif not do_pass and bid_beyond_limit(template, game, player, bid, "min"):
+                    error, status = "Bid too small", httplib.BAD_REQUEST
+                elif not do_pass and bid_beyond_limit(template, game, player, bid, "max"):
+                    error, status = "Bid too high", httplib.BAD_REQUEST
+                elif not do_pass \
+                and util.get(template, "opts", "bidding", "step") is not None \
+                and bid["number"] % template["opts"]["bidding"]["step"]:
+                    error, status = "Bid invalid number", httplib.BAD_REQUEST
+                elif bid.get("blind") and player["status"] != "blind":
+                    error, status = "No longer blind", httplib.FORBIDDEN
+
+                if not error and not do_pass and game["bids"]:
+                    lastbid = next((x for x in game["bids"][::-1] if not x.get("pass")), None)
+                    numbercmp = cmp(bid["number"], lastbid["number"]) if lastbid else 1
+
+                    if numbercmp < 0:
+                        error, status = "Bid needs to be higher than previous", httplib.BAD_REQUEST
+                    elif not numbercmp:
+                        if needs_suite:
+                            suites = template["opts"]["suites"]
+                            suitecmp = suites.index(bid["suite"]) - suites.index(lastbid["suite"])
+                            if suitecmp < 0:
+                                error, status = "Bid needs to be higher than previous", httplib.BAD_REQUEST
+                        else:
+                            error, status = "Bid needs to be higher than previous", httplib.BAD_REQUEST
+
+
+        if "sell" == action:
+
+            if "distributing" != game["status"]:
+                error, status = "Not in distributing phase", httplib.CONFLICT
+            elif game["fk_player"] != player["id"]:
+                error, status = "Not player's turn", httplib.FORBIDDEN
+            elif not util.get(template, "opts", "bidding", "sell"):
+                error, status = "Unknown action", httplib.BAD_REQUEST
+            elif any(x.get("sell") for x in game["bids"]):
+                error, status = "Forbidden", httplib.FORBIDDEN
+
+
+        if "redeal" == action:
+            copts = util.get(template, "opts", "redeal", "condition")
+
+            if "bidding" != game["status"]:
+                error, status = "Not in bidding phase", httplib.CONFLICT
+            elif game["fk_player"] != player["id"]:
+                error, status = "Not player's turn", httplib.FORBIDDEN
+            elif not util.get(template, "opts", "redeal"):
+                error, status = "Unknown action", httplib.BAD_REQUEST
+            elif any(x.get("fk_player") == player["id"] for x in game["bids"]):
+                error, status = "Forbidden", httplib.FORBIDDEN
+            elif len(set(copts.get("hand", [])) & set(player["hand"])) < copts.get("min", sys.maxint):
+                error, status = "Forbidden", httplib.FORBIDDEN
+
+
+        if "distribute" == action:
+
+            if "distributing" != game["status"]:
+                error, status = "Not in distributing phase", httplib.CONFLICT
+            elif not util.get(player, "expected", "distribute"):
+                error, status = "Not in distributing phase", httplib.FORBIDDEN
+            elif not data.get("data"):
+                error, status = "Distribution missing data", httplib.BAD_REQUEST
+            elif game["fk_player"] != player["id"] \
+            and not util.get(template, "opts", "nextgame", "distribute"):
+                error, status = "Not player's turn", httplib.FORBIDDEN
+            else:
+                dist = {int(k): sort(template, v) for k, v in data["data"].items()}
+                expecteds = {int(k): v for k, v in player["expected"]["distribute"].items()}
+                allgiven  = sort(template, [x for xx in dist.values() for x in xx])
+
+                if set(dist) - set(util.unwrap(players, "id")) \
+                or set(dist) - set(expecteds):
+                    error, status = "Unknown players", httplib.BAD_REQUEST
+                elif len(drop(player["hand"], allgiven)) > len(player["hand"]) - len(allgiven):
+                    error, status = "No such cards", httplib.BAD_REQUEST
+                for fk_player, count in () if error else expecteds.items():
+                    if count != len(dist.get(fk_player) or []):
+                        error, status = "Wrong amount being distributed", httplib.BAD_REQUEST
+                        break # for fk_player
+
+            if not error and util.get(template, "opts", "nextgame", "distribute", "ranking"):
+                game0 = self._tx.fetchone("games", fk_table=table["id"],
+                                          sequence=table["games"] - 1, series=table["series"])
+                ranking = {int(k): v for k, v in game0["score"].items()}
+                playersx = sorted([x for x in players if x["id"] in ranking],
+                                  key=lambda x: ranking[x["id"]])
+                if ranking[player["id"]] > len(playersx) / 2:
+                    # The lower half of ranking needs to give top cards
+                    phand = drop(player["hand"], allgiven)
+                    if cmp_cards(template, phand[0], allgiven[-1]) > 0:
+                        error, status = "Must give top cards", httplib.BAD_REQUEST
+
+
+        if "move" == action:
+
+            if "ongoing" != game["status"]:
+                error, status = "Game not underway", httplib.CONFLICT
+            elif game["fk_player"] != player["id"]:
+                error, status = "Not player's turn", httplib.FORBIDDEN
+            elif not data.get("data"):
+                error, status = "Move missing data", httplib.BAD_REQUEST
+            else:
+                cards = data["data"].get("cards") or []
+                do_pass, do_crawl, do_trump = (data["data"].get(x) for x in 
+                                              ("pass", "crawl", "trump"))
+                do_special = next((x for x in util.get(template, "opts", "move", "special") or {}
+                                   if x != "trump" and data["data"].get(x)), None)
+                should_extra = next(({k: v["cards"]}
+                    for k, v in (util.get(template, "opts", "move", "response") or {}).items()
+                    if k not in ("amount", "level", "suite") and isinstance(v, dict)
+                    and v.get("cards")
+                ), None)
+                do_extra = should_extra and data["data"].get(should_extra.keys()[0])
+
+                if do_pass and not util.get(template, "opts", "move", "pass"):
+                    error, status = "Cannot pass", httplib.BAD_REQUEST
+                elif do_pass and not game["trick"]:
+                    error, status = "Cannot pass", httplib.BAD_REQUEST
+                elif do_crawl and util.get(template, "opts", "move", "crawl") is None:
+                    error, status = "Cannot crawl", httplib.BAD_REQUEST
+                elif not cards and not do_pass:
+                    error, status = "Not the right amount of cards", httplib.BAD_REQUEST
+                elif do_pass and (cards or do_extra):
+                    error, status = "Unknown action", httplib.BAD_REQUEST
+                elif len(drop(player["hand"], cards)) > len(player["hand"]) - len(cards):
+                    error, status = "No such cards", httplib.BAD_REQUEST
+                elif not has_move_expected_amount(template, cards):
+                    error, status = "Not the right amount of cards", httplib.FORBIDDEN
+                elif do_crawl and isinstance(util.get(template, "opts", "move", "crawl"), (int, long)) \
+                and util.get(template, "opts", "move", "crawl") != len(game["tricks"]):
+                    error, status = "Cannot make crawl move this round", httplib.FORBIDDEN
+                elif do_crawl and set(map(level, template["opts"]["cards"][-4])) & set(map(level, player["hand"])):
+                    error, status = "Cannot crawl if you have a top card", httplib.FORBIDDEN
+
+                elif do_trump and not util.get(template, "opts", "move", "special", "trump"):
+                    error, status = "Cannot make trump in game", httplib.FORBIDDEN
+                elif do_trump and util.get(template, "opts", "move", "special", "trump", len(game["tricks"])) == False:
+                    error, status = "Cannot make trump this round", httplib.FORBIDDEN
+                elif do_trump and util.get(template, "opts", "move", "special", "trump", "condition", "min") \
+                and len(player["hand"]) < util.get(template, "opts", "move", "special", "trump", "condition", "min"):
+                    error, status = "Cannot make trump: not enough cards", httplib.FORBIDDEN
+                elif do_trump and not any(len(set(player["hand"]) & set(cc)) == len(cc)
+                                          for cc in util.get(template, "opts", "move", "special", "trump", "*")):
+                    error, status = "No cards to make trump", httplib.FORBIDDEN
+                elif do_trump and not (set(cards) & set(
+                    c for cc in util.get(template, "opts", "move", "special", "trump", "*")
+                    if len(set(player["hand"]) & set(cc)) == len(cc) for c in cc
+                )):
+                    error, status = "Not trump card", httplib.FORBIDDEN
+
+                elif do_special and util.get(template, "opts", "move", "special", do_special) is None:
+                    error, status = "Cannot make {0}".format(do_special), httplib.BAD_REQUEST
+                elif do_special and util.get(template, "opts", "move", "special", do_special, len(game["tricks"])) == False:
+                    error, status = "Cannot make {0} this round".format(do_special), httplib.BAD_REQUEST
+                elif do_special and not any(len(set(player["hand"]) & set(cc)) == len(cc)
+                                          for cc in util.get(template, "opts", "move", "special", do_special, "*")):
+                    error, status = "No cards to make {0}".format(do_special), httplib.FORBIDDEN
+                elif do_special and not (set(cards) & set(
+                    c for cc in util.get(template, "opts", "move", "special", do_special, "*")
+                    if len(set(player["hand"]) & set(cc)) == len(cc) for c in cc
+                )):
+                    error, status = "Not {0} card".format(do_special), httplib.FORBIDDEN
+                elif do_special and util.get(template, "opts", "move", "special", do_special, "condition") is not None \
+                and not util.get(game, "opts", util.get(template, "opts", "move", "special", do_special, "condition", "opt")):
+                    error, status = "Not meeting {0} condition: {1}".format(do_special, util.get(template, "opts", "move", "special", do_special, "condition", "opt")), httplib.FORBIDDEN
+                elif do_special and util.get(template, "opts", "move", "special", do_special, "condition", "suite") \
+                and util.get(game, "opts", util.get(template, "opts", "move", "special", do_special, "condition", "opt")) != suite(cards[0]):
+                    error, status = "Not meeting {0} condition: {1}".format(do_special, util.get(template, "opts", "move", "special", do_special, "condition", "opt")), httplib.FORBIDDEN
+
+
+            if not error:
+
+                if cards and util.get(template, "opts", "move", "suite") and len(set(map(suite, cards))) != 1:
+                    error, status = "Must play cards of one suite", httplib.BAD_REQUEST
+                elif cards and util.get(template, "opts", "move", "level") and len(set(map(level, cards))) != 1:
+                    error, status = "Must play cards of one level", httplib.BAD_REQUEST
+                elif not do_pass and not has_move_right_suite(template, game, player, cards):
+                    error, status = "Must follow suite", httplib.BAD_REQUEST
+                elif not do_pass and not has_move_right_level(template, game, cards):
+                    error, status = "Must play at least same level", httplib.BAD_REQUEST
+                elif not do_pass and not has_move_right_amount(template, game, cards):
+                    error, status = "Must play at least same amount", httplib.BAD_REQUEST
+
+            if not error:
+
+                if should_extra and not do_extra and len(player["hand"]) - len(cards):
+                    error, status = "Must %s" % should_extra.keys()[0], httplib.BAD_REQUEST
+                elif should_extra and do_extra is not None and not isinstance(do_extra, list):
+                    error, status = "Unknown action", httplib.BAD_REQUEST
+                elif should_extra and do_extra is not None \
+                and not set(drop(player["hand"], cards)) & set(do_extra):
+                    error, status = "No such cards", httplib.BAD_REQUEST
+                elif should_extra and do_extra and not last_cards(template, game):
+                    error, status = "No need to %s" % should_extra, httplib.BAD_REQUEST
+                elif should_extra and do_extra \
+                and isinstance(should_extra.values()[0], (int, long)) \
+                and len(do_extra) != should_extra.values()[0]:
+                    error, status = "Not the right amount of cards", httplib.BAD_REQUEST
+
+        return error, status
 
 
     def populate(self, template=False, game=False, players=False, player=False,

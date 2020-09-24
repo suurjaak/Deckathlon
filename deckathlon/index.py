@@ -8,7 +8,7 @@ Released under the MIT License.
 
 @author      Erki Suurjaak
 @created     18.04.2020
-@modified    22.05.2020
+@modified    23.09.2020
 """
 import datetime
 import httplib
@@ -182,7 +182,7 @@ def api_action(datatype, path=""):
     @return  {status: "ok" or "error", data: [] or {} or None, error: "message">}
     """
     result, error, status = {}, "", httplib.OK
-    userid, username = map(request.session.get, ("userid", "username"))
+    userid = request.session.get("userid")
     try:
         if "GET" == request.method: data = util.parse_qs(request.query_string)
         else: data = util.json_loads(request.body.read() or request.query_string or "null")
