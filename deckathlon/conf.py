@@ -15,7 +15,7 @@ import os
 """Program version."""
 Title       = "Deckathlon"
 Name        = "deckathlon"
-Version     = "0.1.dev37"
+Version     = "1.0"
 VersionDate = "24.09.2020"
 Author      = "Erki Suurjaak"
 
