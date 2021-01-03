@@ -8,15 +8,15 @@ Released under the MIT License.
 
 @author      Erki Suurjaak
 @created     18.04.2020
-@modified    29.08.2020
+@modified    24.09.2020
 """
 import os
 
 """Program version."""
 Title       = "Deckathlon"
 Name        = "deckathlon"
-Version     = "0.1.dev36"
-VersionDate = "29.08.2020"
+Version     = "0.1.dev37"
+VersionDate = "24.09.2020"
 Author      = "Erki Suurjaak"
 
 """About-information."""

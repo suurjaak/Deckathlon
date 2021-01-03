@@ -14,7 +14,7 @@ Released under the MIT License.
 
 @author      Erki Suurjaak
 @created     18.04.2020
-@modified    22.05.2020
+@modified    02.01.2021
 %"""
 %from deckathlon import conf
 %from deckathlon.lib import util
@@ -54,7 +54,7 @@ Released under the MIT License.
   var typeschema   = Util.jsonLoad({{! repr(util.json_dumps(schema,       indent=None)) }});
 
   typeschema.templates.transform = function(item) {
-    var tt = item.i18n[{{! repr(lang) }}] || {};
+    var tt = item.i18n[{{! util.json_dumps(lang) }}] || {};
     Object.keys(item).forEach(function(k) { var key = "template." + k; if (key in tt) item[k] = tt[key]; });
     return item;
   };
